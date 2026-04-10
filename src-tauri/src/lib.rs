@@ -55,7 +55,8 @@ pub fn run() {
             commands::delete_finance_record,
             commands::update_finance_record,
             commands::delete_milk_record,
-            commands::update_milk_record
+            commands::update_milk_record,
+            commands::get_milk_records
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

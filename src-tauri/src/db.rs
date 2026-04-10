@@ -85,6 +85,9 @@ pub fn establish_connection(app: &AppHandle) -> Connection {
             type TEXT NOT NULL,
             quantity REAL NOT NULL,
             unit TEXT,
+            morning_qty REAL,
+            noon_qty REAL,
+            evening_qty REAL,
             recorded_at DATETIME NOT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(livestock_id) REFERENCES livestock(id)
@@ -148,6 +151,27 @@ pub fn establish_connection(app: &AppHandle) -> Connection {
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         );
     ").expect("Failed to initialize database schema");
+
+    // Add session columns if they don't exist (handle legacy databases)
+    let _ = conn.execute(
+        "ALTER TABLE production_logs ADD COLUMN morning_qty REAL",
+        [],
+    );
+    let _ = conn.execute("ALTER TABLE production_logs ADD COLUMN noon_qty REAL", []);
+    let _ = conn.execute(
+        "ALTER TABLE production_logs ADD COLUMN evening_qty REAL",
+        [],
+    );
+
+    // Add default planting areas to prevent foreign key errors and provide generic options
+    let _ = conn.execute(
+        "INSERT OR IGNORE INTO plots (id, name, type, size, unit) VALUES ('greenhouse', 'General Greenhouse', 'greenhouse', 0, 'Sq Meters')",
+        [],
+    );
+    let _ = conn.execute(
+        "INSERT OR IGNORE INTO plots (id, name, type, size, unit) VALUES ('open_field', 'General Open Field', 'field', 0, 'Acres')",
+        [],
+    );
 
     conn
 }

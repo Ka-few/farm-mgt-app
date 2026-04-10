@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, Calendar, Plus, Trash2 } from 'lucide-react';
+import { Calendar, Plus, Trash2 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 
 interface HealthRecord {
     id: string;
     livestock_id: string;
+    livestock_tag: string;
+    livestock_name: string;
     record_date: string;
     record_type: string;
     description: string;
@@ -14,6 +16,7 @@ interface HealthRecord {
 
 const LivestockHealth: React.FC = () => {
     const [records, setRecords] = useState<HealthRecord[]>([]);
+    const [livestock, setLivestock] = useState<any[]>([]);
     const [showAdd, setShowAdd] = useState(false);
     const [formData, setFormData] = useState({
         livestockId: '',
@@ -33,8 +36,18 @@ const LivestockHealth: React.FC = () => {
         }
     };
 
+    const loadLivestock = async () => {
+        try {
+            const result = await invoke<any[]>('get_livestock');
+            setLivestock(result.filter(a => a.status === 'active'));
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
     useEffect(() => {
         loadRecords();
+        loadLivestock();
     }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -80,8 +93,20 @@ const LivestockHealth: React.FC = () => {
                         <form onSubmit={handleSubmit} className="entry-form">
                             <div className="input-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                 <div className="input-group">
-                                    <label>Animal Tag</label>
-                                    <input value={formData.livestockId} onChange={(e) => setFormData({ ...formData, livestockId: e.target.value })} required placeholder="COW-001" />
+                                    <label>Animal / Tag</label>
+                                    <select
+                                        value={formData.livestockId}
+                                        onChange={(e) => setFormData({ ...formData, livestockId: e.target.value })}
+                                        required
+                                        style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-sm)', background: 'var(--bg-accent)', color: 'black', border: '1px solid var(--glass-border)' }}
+                                    >
+                                        <option value="">Select Animal...</option>
+                                        {livestock.map(a => (
+                                            <option key={a.id} value={a.id}>
+                                                {a.name ? `${a.name} (${a.tag})` : a.tag} - {a.species}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
                                 <div className="input-group">
                                     <label>Date</label>
@@ -100,7 +125,7 @@ const LivestockHealth: React.FC = () => {
                                     </select>
                                 </div>
                                 <div className="input-group">
-                                    <label>Cost (KShs)</label>
+                                    <label>Cost</label>
                                     <input type="number" value={formData.cost} onChange={(e) => setFormData({ ...formData, cost: parseFloat(e.target.value) })} />
                                 </div>
                             </div>
@@ -146,7 +171,11 @@ const LivestockHealth: React.FC = () => {
                             records.map(record => (
                                 <tr key={record.id}>
                                     <td>{record.record_date}</td>
-                                    <td><Tag size={12} style={{ opacity: 0.6 }} /> {record.livestock_id}</td>
+                                    <td>
+                                        {record.livestock_tag ? (
+                                            <span>{record.livestock_name ? `${record.livestock_name} (${record.livestock_tag})` : record.livestock_tag}</span>
+                                        ) : record.livestock_id}
+                                    </td>
                                     <td>
                                         <span className="badge" style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', textTransform: 'capitalize' }}>
                                             {record.record_type}
@@ -174,9 +203,5 @@ const LivestockHealth: React.FC = () => {
         </div>
     );
 };
-
-const Tag: React.FC<{ size?: number; style?: React.CSSProperties }> = ({ size = 18, style }) => (
-    <Activity size={size} style={style} />
-);
 
 export default LivestockHealth;

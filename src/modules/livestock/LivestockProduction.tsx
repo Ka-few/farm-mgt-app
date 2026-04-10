@@ -5,19 +5,30 @@ import { invoke } from '@tauri-apps/api/core';
 interface ProductionLog {
     id: string;
     livestock_id: string;
+    livestock_tag: string;
+    livestock_name: string;
     production_type: string;
     quantity: number;
     unit: string;
+    morning_qty?: number;
+    noon_qty?: number;
+    evening_qty?: number;
     recorded_at: string;
 }
 
 const LivestockProduction: React.FC = () => {
     const [logs, setLogs] = useState<ProductionLog[]>([]);
+    const [livestock, setLivestock] = useState<any[]>([]);
     const [showAdd, setShowAdd] = useState(false);
     const [animalId, setAnimalId] = useState('');
     const [prodType, setProdType] = useState('milk');
     const [quantity, setQuantity] = useState('');
     const [unit, setUnit] = useState('L');
+    const [morning, setMorning] = useState('');
+    const [noon, setNoon] = useState('');
+    const [evening, setEvening] = useState('');
+
+    const totalMilk = (parseFloat(morning) || 0) + (parseFloat(noon) || 0) + (parseFloat(evening) || 0);
 
     const loadLogs = async () => {
         try {
@@ -28,23 +39,40 @@ const LivestockProduction: React.FC = () => {
         }
     };
 
+    const loadLivestock = async () => {
+        try {
+            const result = await invoke<any[]>('get_livestock');
+            setLivestock(result.filter(a => a.status === 'active'));
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
     useEffect(() => {
         loadLogs();
+        loadLivestock();
     }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
+            const finalQuantity = prodType === 'milk' ? totalMilk : parseFloat(quantity);
             await invoke('record_production', {
                 livestockId: animalId || null,
                 productionType: prodType,
-                quantity: parseFloat(quantity),
+                quantity: finalQuantity,
                 unit,
+                morningQty: prodType === 'milk' ? (parseFloat(morning) || 0) : 0,
+                noonQty: prodType === 'milk' ? (parseFloat(noon) || 0) : 0,
+                eveningQty: prodType === 'milk' ? (parseFloat(evening) || 0) : 0,
                 recordedAt: new Date().toISOString()
             });
             setShowAdd(false);
             setAnimalId('');
             setQuantity('');
+            setMorning('');
+            setNoon('');
+            setEvening('');
             loadLogs();
         } catch (err) {
             console.error(err);
@@ -70,8 +98,19 @@ const LivestockProduction: React.FC = () => {
                         <h3>Record Production</h3>
                         <form onSubmit={handleSubmit} className="entry-form">
                             <div className="input-group">
-                                <label>Animal Tag (Optional)</label>
-                                <input value={animalId} onChange={(e) => setAnimalId(e.target.value)} placeholder="e.g. COW-001" />
+                                <label>Animal / Tag (Optional)</label>
+                                <select
+                                    value={animalId}
+                                    onChange={(e) => setAnimalId(e.target.value)}
+                                    style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-sm)', background: 'var(--bg-accent)', color: 'black', border: '1px solid var(--glass-border)' }}
+                                >
+                                    <option value="">Bulk / General (No specific animal)</option>
+                                    {livestock.map(a => (
+                                        <option key={a.id} value={a.id}>
+                                            {a.name ? `${a.name} (${a.tag})` : a.tag} - {a.species}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
                             <div className="input-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                 <div className="input-group">
@@ -85,14 +124,44 @@ const LivestockProduction: React.FC = () => {
                                         <option value="eggs">Eggs (Poultry)</option>
                                     </select>
                                 </div>
-                                <div className="input-group">
-                                    <label>Quantity</label>
-                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                        <input type="number" step="0.1" value={quantity} onChange={(e) => setQuantity(e.target.value)} required style={{ flex: 1 }} />
-                                        <span style={{ display: 'flex', alignItems: 'center', padding: '0.5rem', background: 'var(--bg-accent)', borderRadius: 'var(--radius-sm)' }}>{unit}</span>
+                                {prodType !== 'milk' && (
+                                    <div className="input-group">
+                                        <label>Quantity</label>
+                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                            <input type="number" step="0.1" value={quantity} onChange={(e) => setQuantity(e.target.value)} required style={{ flex: 1 }} />
+                                            <span style={{ display: 'flex', alignItems: 'center', padding: '0.5rem', background: 'var(--bg-accent)', borderRadius: 'var(--radius-sm)' }}>{unit}</span>
+                                        </div>
                                     </div>
-                                </div>
+                                )}
                             </div>
+
+                            {prodType === 'milk' && (
+                                <>
+                                    <div className="input-column" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+                                        <div className="input-group">
+                                            <label>Morning (L)</label>
+                                            <input type="number" step="0.1" value={morning} onChange={(e) => setMorning(e.target.value)} placeholder="0.0" />
+                                        </div>
+                                        <div className="input-group">
+                                            <label>Noon (L)</label>
+                                            <input type="number" step="0.1" value={noon} onChange={(e) => setNoon(e.target.value)} placeholder="0.0" />
+                                        </div>
+                                        <div className="input-group">
+                                            <label>Evening (L)</label>
+                                            <input type="number" step="0.1" value={evening} onChange={(e) => setEvening(e.target.value)} placeholder="0.0" />
+                                        </div>
+                                    </div>
+                                    <div className="input-group">
+                                        <label>Total (L)</label>
+                                        <input
+                                            type="number"
+                                            value={totalMilk.toFixed(1)}
+                                            readOnly
+                                            style={{ background: 'rgba(255,255,255,0.05)', cursor: 'not-allowed', fontWeight: 'bold' }}
+                                        />
+                                    </div>
+                                </>
+                            )}
                             <div className="form-actions">
                                 <button type="button" className="button-secondary" onClick={() => setShowAdd(false)}>Cancel</button>
                                 <button type="submit" className="button-primary">Save Record</button>
@@ -120,10 +189,21 @@ const LivestockProduction: React.FC = () => {
                             logs.map(log => (
                                 <tr key={log.id}>
                                     <td><Calendar size={14} style={{ marginRight: '0.5rem' }} /> {new Date(log.recorded_at).toLocaleDateString()}</td>
-                                    <td>{log.livestock_id || 'Bulk/General'}</td>
+                                    <td>
+                                        {log.livestock_tag ? (
+                                            <span>{log.livestock_name ? `${log.livestock_name} (${log.livestock_tag})` : log.livestock_tag}</span>
+                                        ) : 'Bulk/General'}
+                                    </td>
                                     <td style={{ textTransform: 'capitalize' }}>
                                         {log.production_type === 'milk' ? <Droplets size={14} color="#3b82f6" /> : <Utensils size={14} color="#ef4444" />}
-                                        <span style={{ marginLeft: '0.5rem' }}>{log.production_type}</span>
+                                        <span style={{ marginLeft: '0.5rem' }}>
+                                            {log.production_type}
+                                            {log.production_type === 'milk' && (log.morning_qty || log.noon_qty || log.evening_qty) ? (
+                                                <span style={{ opacity: 0.6, fontSize: '0.75rem', marginLeft: '0.4rem', display: 'block' }}>
+                                                    M:{log.morning_qty || 0} N:{log.noon_qty || 0} E:{log.evening_qty || 0}
+                                                </span>
+                                            ) : null}
+                                        </span>
                                     </td>
                                     <td style={{ fontWeight: 600 }}>{log.quantity} {log.unit}</td>
                                     <td>

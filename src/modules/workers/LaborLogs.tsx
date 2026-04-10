@@ -12,6 +12,7 @@ interface Worker {
 interface Plot {
     id: string;
     name: string;
+    type: string;
 }
 
 const LaborLogs: React.FC = () => {
@@ -89,7 +90,11 @@ const LaborLogs: React.FC = () => {
                         <label><MapPin size={14} /> Plot / Area (Optional)</label>
                         <select value={plotId} onChange={(e) => setPlotId(e.target.value)}>
                             <option value="">General / Multiple</option>
-                            {plots.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                            {plots.map(p => (
+                                <option key={p.id} value={p.id}>
+                                    {p.name} ({p.type === 'greenhouse' ? 'Greenhouse' : 'Open Field'})
+                                </option>
+                            ))}
                         </select>
                     </div>
 

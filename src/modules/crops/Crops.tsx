@@ -6,6 +6,7 @@ import '../../styles/Forms.css';
 interface Plot {
     id: string;
     name: string;
+    type: string;
 }
 
 interface Crop {
@@ -129,10 +130,14 @@ const Crops: React.FC = () => {
                             <input value={variety} onChange={(e) => setVariety(e.target.value)} placeholder="e.g. Money Maker" />
                         </div>
                         <div className="input-group">
-                            <label>Plot / Greenhouse</label>
+                            <label>Planting Area</label>
                             <select value={plotId} onChange={(e) => setPlotId(e.target.value)} required>
                                 <option value="">Select Location...</option>
-                                {plots.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                {plots.map(p => (
+                                    <option key={p.id} value={p.id}>
+                                        {p.name} ({p.type === 'greenhouse' ? 'Greenhouse' : 'Open Field'})
+                                    </option>
+                                ))}
                             </select>
                         </div>
                         <div className="input-group">

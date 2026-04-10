@@ -58,6 +58,8 @@ pub struct Livestock {
 pub struct HealthRecord {
     pub id: String,
     pub livestock_id: Option<String>,
+    pub livestock_tag: Option<String>,
+    pub livestock_name: Option<String>,
     pub record_date: String,
     pub record_type: String, // vaccination, treatment, checkup
     pub description: Option<String>,
@@ -70,9 +72,14 @@ pub struct HealthRecord {
 pub struct ProductionLog {
     pub id: String,
     pub livestock_id: Option<String>,
+    pub livestock_tag: Option<String>,
+    pub livestock_name: Option<String>,
     pub production_type: String, // 'milk', 'eggs'
     pub quantity: f64,
     pub unit: Option<String>,
+    pub morning_qty: Option<f64>,
+    pub noon_qty: Option<f64>,
+    pub evening_qty: Option<f64>,
     pub recorded_at: String,
     pub created_at: Option<String>,
 }

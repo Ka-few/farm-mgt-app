@@ -258,21 +258,292 @@ pub fn get_irrigation_records(state: State<DbState>) -> Result<Vec<IrrigationRec
 // --- Livestock Commands ---
 
 #[tauri::command]
-pub fn record_milk(
+pub fn get_livestock(state: State<DbState>) -> Result<Vec<crate::models::Livestock>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare("SELECT id, tag, name, species, breed, dob, status, created_at FROM livestock ORDER BY created_at DESC")
+        .map_err(|e| e.to_string())?;
+
+    let livestock_iter = stmt
+        .query_map([], |row| {
+            Ok(crate::models::Livestock {
+                id: row.get(0)?,
+                tag: row.get(1)?,
+                name: row.get(2)?,
+                species: row.get(3)?,
+                breed: row.get(4)?,
+                dob: row.get(5)?,
+                status: row.get(6)?,
+                created_at: row.get(7)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut list = Vec::new();
+    for item in livestock_iter {
+        list.push(item.map_err(|e| e.to_string())?);
+    }
+    Ok(list)
+}
+
+#[tauri::command]
+pub fn add_livestock(
+    state: State<DbState>,
+    tag: String,
+    name: String,
+    species: String,
+    breed: String,
+    dob: String,
+) -> Result<String, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let id = Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT INTO livestock (id, tag, name, species, breed, dob) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        params![id, tag, name, species, breed, dob],
+    ).map_err(|e| e.to_string())?;
+    Ok(id)
+}
+
+#[tauri::command]
+pub fn update_livestock(
+    state: State<DbState>,
+    id: String,
+    tag: String,
+    name: String,
+    species: String,
+    breed: String,
+    dob: String,
+    status: String,
+) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "UPDATE livestock SET tag = ?1, name = ?2, species = ?3, breed = ?4, dob = ?5, status = ?6 WHERE id = ?7",
+        params![tag, name, species, breed, dob, status, id],
+    ).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn delete_livestock(state: State<DbState>, id: String) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM livestock WHERE id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_health_records(
     state: State<DbState>,
     livestock_id: Option<String>,
+) -> Result<Vec<crate::models::HealthRecord>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+
+    let mut records = Vec::new();
+
+    if let Some(lid) = livestock_id {
+        let mut stmt = conn.prepare("
+            SELECT h.id, h.livestock_id, l.tag, l.name, h.record_date, h.record_type, h.description, h.cost, h.next_visit, h.created_at 
+            FROM health_records h
+            LEFT JOIN livestock l ON h.livestock_id = l.id
+            WHERE h.livestock_id = ?1 
+            ORDER BY record_date DESC
+        ").map_err(|e| e.to_string())?;
+        let record_iter = stmt
+            .query_map(params![lid], |row| {
+                Ok(crate::models::HealthRecord {
+                    id: row.get(0)?,
+                    livestock_id: row.get(1)?,
+                    livestock_tag: row.get(2)?,
+                    livestock_name: row.get(3)?,
+                    record_date: row.get(4)?,
+                    record_type: row.get(5)?,
+                    description: row.get(6)?,
+                    cost: row.get(7)?,
+                    next_visit: row.get(8)?,
+                    created_at: row.get(9)?,
+                })
+            })
+            .map_err(|e| e.to_string())?;
+
+        for record in record_iter {
+            records.push(record.map_err(|e| e.to_string())?);
+        }
+    } else {
+        let mut stmt = conn.prepare("
+            SELECT h.id, h.livestock_id, l.tag, l.name, h.record_date, h.record_type, h.description, h.cost, h.next_visit, h.created_at 
+            FROM health_records h
+            LEFT JOIN livestock l ON h.livestock_id = l.id
+            ORDER BY record_date DESC
+        ").map_err(|e| e.to_string())?;
+        let record_iter = stmt
+            .query_map([], |row| {
+                Ok(crate::models::HealthRecord {
+                    id: row.get(0)?,
+                    livestock_id: row.get(1)?,
+                    livestock_tag: row.get(2)?,
+                    livestock_name: row.get(3)?,
+                    record_date: row.get(4)?,
+                    record_type: row.get(5)?,
+                    description: row.get(6)?,
+                    cost: row.get(7)?,
+                    next_visit: row.get(8)?,
+                    created_at: row.get(9)?,
+                })
+            })
+            .map_err(|e| e.to_string())?;
+
+        for record in record_iter {
+            records.push(record.map_err(|e| e.to_string())?);
+        }
+    }
+
+    Ok(records)
+}
+
+#[tauri::command]
+pub fn add_health_record(
+    state: State<DbState>,
+    livestock_id: String,
+    record_date: String,
+    record_type: String,
+    description: String,
+    cost: f64,
+    next_visit: Option<String>,
+) -> Result<String, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let id = Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT INTO health_records (id, livestock_id, record_date, record_type, description, cost, next_visit) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        params![id, livestock_id, record_date, record_type, description, cost, next_visit],
+    ).map_err(|e| e.to_string())?;
+
+    if cost > 0.0 {
+        let finance_id = Uuid::new_v4().to_string();
+        conn.execute(
+            "INSERT INTO finance_records (id, type, category, amount, date, description, linked_entity_type, linked_entity_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            params![finance_id, "expense", "Livestock Health", cost, record_date, format!("Health: {} for {}", record_type, livestock_id), "health_records", id],
+        ).ok();
+    }
+
+    Ok(id)
+}
+
+#[tauri::command]
+pub fn record_production(
+    state: State<DbState>,
+    livestock_id: Option<String>,
+    production_type: String,
     quantity: f64,
+    unit: String,
+    morning_qty: Option<f64>,
+    noon_qty: Option<f64>,
+    evening_qty: Option<f64>,
     recorded_at: String,
 ) -> Result<String, String> {
     let conn = state.0.lock().map_err(|e| e.to_string())?;
     let id = Uuid::new_v4().to_string();
 
     conn.execute(
-        "INSERT INTO production_logs (id, livestock_id, type, quantity, unit, recorded_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-        params![id, livestock_id, "milk", quantity, "L", recorded_at],
+        "INSERT INTO production_logs (id, livestock_id, type, quantity, unit, morning_qty, noon_qty, evening_qty, recorded_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+        params![id, livestock_id, production_type, quantity, unit, morning_qty, noon_qty, evening_qty, recorded_at],
     ).map_err(|e| e.to_string())?;
 
     Ok(id)
+}
+
+#[tauri::command]
+pub fn record_milk(
+    state: State<DbState>,
+    livestock_id: Option<String>,
+    quantity: f64,
+    morning_qty: Option<f64>,
+    noon_qty: Option<f64>,
+    evening_qty: Option<f64>,
+    recorded_at: String,
+) -> Result<String, String> {
+    record_production(
+        state,
+        livestock_id,
+        "milk".to_string(),
+        quantity,
+        "L".to_string(),
+        morning_qty,
+        noon_qty,
+        evening_qty,
+        recorded_at,
+    )
+}
+
+#[tauri::command]
+pub fn get_production_logs(
+    state: State<DbState>,
+    prod_type: Option<String>,
+) -> Result<Vec<crate::models::ProductionLog>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+
+    let mut logs = Vec::new();
+
+    if let Some(pt) = prod_type {
+        let mut stmt = conn.prepare("
+            SELECT p.id, p.livestock_id, l.tag, l.name, p.type, p.quantity, p.unit, p.morning_qty, p.noon_qty, p.evening_qty, p.recorded_at, p.created_at 
+            FROM production_logs p
+            LEFT JOIN livestock l ON p.livestock_id = l.id
+            WHERE p.type = ?1 
+            ORDER BY recorded_at DESC
+        ").map_err(|e| e.to_string())?;
+        let logs_iter = stmt
+            .query_map(params![pt], |row| {
+                Ok(crate::models::ProductionLog {
+                    id: row.get(0)?,
+                    livestock_id: row.get(1)?,
+                    livestock_tag: row.get(2)?,
+                    livestock_name: row.get(3)?,
+                    production_type: row.get(4)?,
+                    quantity: row.get(5)?,
+                    unit: row.get(6)?,
+                    morning_qty: row.get(7)?,
+                    noon_qty: row.get(8)?,
+                    evening_qty: row.get(9)?,
+                    recorded_at: row.get(10)?,
+                    created_at: row.get(11)?,
+                })
+            })
+            .map_err(|e| e.to_string())?;
+
+        for log in logs_iter {
+            logs.push(log.map_err(|e| e.to_string())?);
+        }
+    } else {
+        let mut stmt = conn.prepare("
+            SELECT p.id, p.livestock_id, l.tag, l.name, p.type, p.quantity, p.unit, p.morning_qty, p.noon_qty, p.evening_qty, p.recorded_at, p.created_at 
+            FROM production_logs p
+            LEFT JOIN livestock l ON p.livestock_id = l.id
+            ORDER BY recorded_at DESC
+        ").map_err(|e| e.to_string())?;
+        let logs_iter = stmt
+            .query_map([], |row| {
+                Ok(crate::models::ProductionLog {
+                    id: row.get(0)?,
+                    livestock_id: row.get(1)?,
+                    livestock_tag: row.get(2)?,
+                    livestock_name: row.get(3)?,
+                    production_type: row.get(4)?,
+                    quantity: row.get(5)?,
+                    unit: row.get(6)?,
+                    morning_qty: row.get(7)?,
+                    noon_qty: row.get(8)?,
+                    evening_qty: row.get(9)?,
+                    recorded_at: row.get(10)?,
+                    created_at: row.get(11)?,
+                })
+            })
+            .map_err(|e| e.to_string())?;
+
+        for log in logs_iter {
+            logs.push(log.map_err(|e| e.to_string())?);
+        }
+    }
+
+    Ok(logs)
 }
 
 #[tauri::command]
@@ -567,22 +838,37 @@ pub fn update_finance_record(
 }
 
 #[tauri::command]
-pub fn get_milk_records(state: State<DbState>) -> Result<Vec<crate::models::ProductionLog>, String> {
+pub fn get_milk_records(
+    state: State<DbState>,
+) -> Result<Vec<crate::models::ProductionLog>, String> {
     let conn = state.0.lock().map_err(|e| e.to_string())?;
-    let mut stmt = conn.prepare("SELECT id, livestock_id, type, quantity, unit, recorded_at, created_at FROM production_logs WHERE type = 'milk' ORDER BY recorded_at DESC LIMIT 50")
-        .map_err(|e| e.to_string())?;
-    
-    let logs_iter = stmt.query_map([], |row| {
-        Ok(crate::models::ProductionLog {
-            id: row.get(0)?,
-            livestock_id: row.get(1)?,
-            production_type: row.get(2)?,
-            quantity: row.get(3)?,
-            unit: row.get(4)?,
-            recorded_at: row.get(5)?,
-            created_at: row.get(6)?,
+    let mut stmt = conn.prepare("
+        SELECT p.id, p.livestock_id, l.tag, l.name, p.type, p.quantity, p.unit, p.morning_qty, p.noon_qty, p.evening_qty, p.recorded_at, p.created_at 
+        FROM production_logs p
+        LEFT JOIN livestock l ON p.livestock_id = l.id
+        WHERE p.type = 'milk' 
+        ORDER BY recorded_at DESC 
+        LIMIT 50
+    ").map_err(|e| e.to_string())?;
+
+    let logs_iter = stmt
+        .query_map([], |row| {
+            Ok(crate::models::ProductionLog {
+                id: row.get(0)?,
+                livestock_id: row.get(1)?,
+                livestock_tag: row.get(2)?,
+                livestock_name: row.get(3)?,
+                production_type: row.get(4)?,
+                quantity: row.get(5)?,
+                unit: row.get(6)?,
+                morning_qty: row.get(7)?,
+                noon_qty: row.get(8)?,
+                evening_qty: row.get(9)?,
+                recorded_at: row.get(10)?,
+                created_at: row.get(11)?,
+            })
         })
-    }).map_err(|e| e.to_string())?;
+        .map_err(|e| e.to_string())?;
 
     let mut logs = Vec::new();
     for log in logs_iter {
@@ -604,12 +890,15 @@ pub fn update_milk_record(
     state: State<DbState>,
     id: String,
     quantity: f64,
+    morning_qty: Option<f64>,
+    noon_qty: Option<f64>,
+    evening_qty: Option<f64>,
     recorded_at: String,
 ) -> Result<(), String> {
     let conn = state.0.lock().map_err(|e| e.to_string())?;
     conn.execute(
-        "UPDATE production_logs SET quantity = ?1, recorded_at = ?2 WHERE id = ?3",
-        params![quantity, recorded_at, id],
+        "UPDATE production_logs SET quantity = ?1, morning_qty = ?2, noon_qty = ?3, evening_qty = ?4, recorded_at = ?5 WHERE id = ?6",
+        params![quantity, morning_qty, noon_qty, evening_qty, recorded_at, id],
     )
     .map_err(|e| e.to_string())?;
     Ok(())

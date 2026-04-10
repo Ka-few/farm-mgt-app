@@ -6,6 +6,7 @@ import '../../styles/Forms.css';
 interface Plot {
     id: string;
     name: string;
+    type: string;
 }
 
 interface IrrigationRecord {
@@ -114,7 +115,11 @@ const Irrigation: React.FC = () => {
                             <label>Plot / Area</label>
                             <select value={plotId} onChange={(e) => setPlotId(e.target.value)} required>
                                 <option value="">Select Location...</option>
-                                {plots.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                {plots.map(p => (
+                                    <option key={p.id} value={p.id}>
+                                        {p.name} ({p.type === 'greenhouse' ? 'Greenhouse' : 'Open Field'})
+                                    </option>
+                                ))}
                             </select>
                         </div>
                         <div className="input-group">
