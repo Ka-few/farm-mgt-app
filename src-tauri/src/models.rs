@@ -30,6 +30,7 @@ pub struct Worker {
     pub created_at: Option<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LaborRecord {
     pub id: String,
@@ -98,6 +99,7 @@ pub struct FinanceRecord {
     pub created_at: Option<String>,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AuditEvent {
     pub id: String,
