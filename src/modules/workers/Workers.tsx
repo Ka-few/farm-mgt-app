@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { UserPlus, Edit2, Trash2 } from 'lucide-react';
-import { getDb, generateId } from '../../core/db';
+import { invoke } from '@tauri-apps/api/core';
 import '../../styles/Forms.css';
 
 interface Worker {
@@ -17,11 +17,12 @@ const Workers: React.FC = () => {
     const [name, setName] = useState('');
     const [role, setRole] = useState('');
     const [rate, setRate] = useState('');
+    const [editingWorker, setEditingWorker] = useState<Worker | null>(null);
 
     const loadWorkers = async () => {
         try {
-            const db = await getDb();
-            const result = await db.select<Worker[]>('SELECT * FROM workers ORDER BY name ASC');
+            console.log('Attempting to invoke get_workers. invoke is:', typeof invoke, invoke);
+            const result = await invoke<Worker[]>('get_workers');
             setWorkers(result);
         } catch (err) {
             console.error('Failed to load workers:', err);
@@ -37,18 +38,12 @@ const Workers: React.FC = () => {
         if (!name || !role || !rate) return;
 
         try {
-            const db = await getDb();
-            const id = generateId();
-            await db.execute(
-                'INSERT INTO workers (id, name, role, daily_rate) VALUES ($1, $2, $3, $4)',
-                [id, name, role, parseFloat(rate)]
-            );
-
-            // Audit
-            await db.execute(
-                'INSERT INTO audit_events (id, entity_type, entity_id, action, payload) VALUES ($1, $2, $3, $4, $5)',
-                [generateId(), 'workers', id, 'create', JSON.stringify({ name, role, rate })]
-            );
+            console.log('Attempting to invoke add_worker. invoke is:', typeof invoke, invoke);
+            await invoke('add_worker', {
+                name,
+                role,
+                dailyRate: parseFloat(rate)
+            });
 
             setName('');
             setRole('');
@@ -58,6 +53,39 @@ const Workers: React.FC = () => {
         } catch (err) {
             console.error(err);
             alert('Error adding worker');
+        }
+    };
+
+    const handleDeleteWorker = async (id: string) => {
+        if (!window.confirm('Are you sure you want to remove this worker? This cannot be undone.')) return;
+
+        try {
+            await invoke('delete_worker', { id });
+            loadWorkers();
+        } catch (err) {
+            console.error(err);
+            alert('Error deleting worker');
+        }
+    };
+
+    const handleUpdateWorker = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingWorker) return;
+
+        try {
+            await invoke('update_worker', {
+                id: editingWorker.id,
+                name: editingWorker.name,
+                role: editingWorker.role,
+                dailyRate: editingWorker.daily_rate,
+                isActive: editingWorker.is_active
+            });
+            setEditingWorker(null);
+            loadWorkers();
+            alert('Worker profile updated!');
+        } catch (err) {
+            console.error(err);
+            alert('Failed to update worker');
         }
     };
 
@@ -87,7 +115,7 @@ const Workers: React.FC = () => {
                             <input value={role} onChange={(e) => setRole(e.target.value)} placeholder="e.g. Milker, Harvester" required />
                         </div>
                         <div className="input-group">
-                            <label>Daily Rate ({workers[0]?.role ? 'USD' : 'Currency'})</label>
+                            <label>Daily Rate (KShs)</label>
                             <input type="number" value={rate} onChange={(e) => setRate(e.target.value)} placeholder="0.00" required />
                         </div>
                         <div className="form-actions" style={{ gridColumn: '1 / -1' }}>
@@ -120,7 +148,7 @@ const Workers: React.FC = () => {
                                 <tr key={worker.id}>
                                     <td style={{ fontWeight: 600 }}>{worker.name}</td>
                                     <td>{worker.role}</td>
-                                    <td>${worker.daily_rate.toFixed(2)}</td>
+                                    <td>KShs {worker.daily_rate.toFixed(2)}</td>
                                     <td>
                                         <span className={`badge ${worker.is_active ? 'badge-success' : 'badge-warning'}`}>
                                             {worker.is_active ? 'Active' : 'Inactive'}
@@ -128,8 +156,8 @@ const Workers: React.FC = () => {
                                     </td>
                                     <td>
                                         <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                            <button className="btn-icon" title="Edit"><Edit2 size={16} /></button>
-                                            <button className="btn-icon danger" title="Archive"><Trash2 size={16} /></button>
+                                            <button className="btn-icon" title="Edit" onClick={() => setEditingWorker(worker)}><Edit2 size={16} /></button>
+                                            <button className="btn-icon danger" title="Archive" onClick={() => handleDeleteWorker(worker.id)}><Trash2 size={16} /></button>
                                         </div>
                                     </td>
                                 </tr>
@@ -138,6 +166,45 @@ const Workers: React.FC = () => {
                     </tbody>
                 </table>
             </div>
+            {/* Edit Modal / Form Overlay */}
+            {editingWorker && (
+                <div className="modal-overlay">
+                    <div className="form-container glass" style={{ maxWidth: '400px', margin: 'auto' }}>
+                        <h3>Edit Worker</h3>
+                        <form onSubmit={handleUpdateWorker} className="entry-form">
+                            <div className="input-group">
+                                <label>Full Name</label>
+                                <input
+                                    value={editingWorker.name}
+                                    onChange={(e) => setEditingWorker({ ...editingWorker, name: e.target.value })}
+                                    required
+                                />
+                            </div>
+                            <div className="input-group">
+                                <label>Role</label>
+                                <input
+                                    value={editingWorker.role || ''}
+                                    onChange={(e) => setEditingWorker({ ...editingWorker, role: e.target.value })}
+                                    required
+                                />
+                            </div>
+                            <div className="input-group">
+                                <label>Daily Rate (KShs)</label>
+                                <input
+                                    type="number"
+                                    value={editingWorker.daily_rate || 0}
+                                    onChange={(e) => setEditingWorker({ ...editingWorker, daily_rate: parseFloat(e.target.value) })}
+                                    required
+                                />
+                            </div>
+                            <div className="form-actions">
+                                <button type="submit" className="button-primary">Update</button>
+                                <button type="button" onClick={() => setEditingWorker(null)} className="button-secondary">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

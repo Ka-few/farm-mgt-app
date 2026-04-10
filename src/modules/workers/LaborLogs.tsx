@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, MapPin, User, Save } from 'lucide-react';
-import { getDb, generateId } from '../../core/db';
+import { invoke } from '@tauri-apps/api/core';
 import '../../styles/Forms.css';
 
 interface Worker {
@@ -26,10 +26,9 @@ const LaborLogs: React.FC = () => {
     useEffect(() => {
         const loadMetadata = async () => {
             try {
-                const db = await getDb();
-                const w = await db.select<Worker[]>('SELECT id, name, daily_rate FROM workers WHERE is_active = 1');
-                const p = await db.select<Plot[]>('SELECT id, name FROM plots');
-                setWorkers(w);
+                const w = await invoke<Worker[]>('get_workers');
+                const p = await invoke<Plot[]>('get_plots');
+                setWorkers(w.filter((worker: any) => worker.is_active === 1));
                 setPlots(p);
             } catch (err) {
                 console.error(err);
@@ -44,21 +43,16 @@ const LaborLogs: React.FC = () => {
 
         setLoading(true);
         try {
-            const db = await getDb();
             const worker = workers.find(w => w.id === workerId);
             const amount = worker?.daily_rate || 0;
 
-            const id = generateId();
-            await db.execute(
-                'INSERT INTO labor_records (id, worker_id, plot_id, activity, date, amount) VALUES ($1, $2, $3, $4, $5, $6)',
-                [id, workerId, plotId || null, activity, date, amount]
-            );
-
-            // Audit and Finance (Expense)
-            await db.execute(
-                'INSERT INTO finance_records (id, type, category, amount, date, description, linked_entity_type, linked_entity_id) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
-                [generateId(), 'expense', 'Labor', amount, date, `Labor: ${activity} by ${worker?.name}`, 'labor_records', id]
-            );
+            await invoke('record_labor', {
+                workerId,
+                plotId: plotId || null,
+                activity,
+                date,
+                amount
+            });
 
             alert('Labor record saved and added to expenses!');
             setActivity('');
@@ -87,7 +81,7 @@ const LaborLogs: React.FC = () => {
                         <label><User size={14} /> Worker</label>
                         <select value={workerId} onChange={(e) => setWorkerId(e.target.value)} required>
                             <option value="">Select Worker...</option>
-                            {workers.map(w => <option key={w.id} value={w.id}>{w.name} (${w.daily_rate}/day)</option>)}
+                            {workers.map(w => <option key={w.id} value={w.id}>{w.name} (KShs {w.daily_rate}/day)</option>)}
                         </select>
                     </div>
 

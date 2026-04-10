@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Save } from 'lucide-react';
-import { getDb, generateId } from '../../core/db';
+import { invoke } from '@tauri-apps/api/core';
 import '../../styles/Forms.css';
 
 const MilkEntry: React.FC = () => {
@@ -19,19 +19,11 @@ const MilkEntry: React.FC = () => {
 
         setLoading(true);
         try {
-            const db = await getDb();
-            const livestockId = tag; // Simplification: tagging by ID or lookup
-
-            await db.execute(
-                'INSERT INTO production_logs (id, livestock_id, type, quantity, recorded_at) VALUES ($1, $2, $3, $4, $5)',
-                [generateId(), livestockId, 'milk', parseFloat(quantity), new Date().toISOString()]
-            );
-
-            // Audit trail
-            await db.execute(
-                'INSERT INTO audit_events (id, entity_type, entity_id, action, payload) VALUES ($1, $2, $3, $4, $5)',
-                [generateId(), 'production_logs', livestockId, 'create', JSON.stringify({ quantity })]
-            );
+            await invoke('record_milk', {
+                livestockId: tag,
+                quantity: parseFloat(quantity),
+                recordedAt: new Date().toISOString()
+            });
 
             setTag('');
             setQuantity('');

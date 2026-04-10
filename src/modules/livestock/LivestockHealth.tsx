@@ -1,0 +1,182 @@
+import React, { useState, useEffect } from 'react';
+import { Activity, Calendar, Plus, Trash2 } from 'lucide-react';
+import { invoke } from '@tauri-apps/api/core';
+
+interface HealthRecord {
+    id: string;
+    livestock_id: string;
+    record_date: string;
+    record_type: string;
+    description: string;
+    cost: number;
+    next_visit: string;
+}
+
+const LivestockHealth: React.FC = () => {
+    const [records, setRecords] = useState<HealthRecord[]>([]);
+    const [showAdd, setShowAdd] = useState(false);
+    const [formData, setFormData] = useState({
+        livestockId: '',
+        recordDate: new Date().toISOString().split('T')[0],
+        recordType: 'vaccination',
+        description: '',
+        cost: 0,
+        nextVisit: ''
+    });
+
+    const loadRecords = async () => {
+        try {
+            const result = await invoke<HealthRecord[]>('get_health_records');
+            setRecords(result);
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    useEffect(() => {
+        loadRecords();
+    }, []);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        try {
+            await invoke('add_health_record', {
+                ...formData,
+                cost: parseFloat(formData.cost.toString()),
+                nextVisit: formData.nextVisit || null
+            });
+            setShowAdd(false);
+            setFormData({
+                livestockId: '',
+                recordDate: new Date().toISOString().split('T')[0],
+                recordType: 'vaccination',
+                description: '',
+                cost: 0,
+                nextVisit: ''
+            });
+            loadRecords();
+        } catch (err) {
+            console.error(err);
+            alert('Error saving health record');
+        }
+    };
+
+    return (
+        <div className="livestock-health">
+            <div className="welcome-header">
+                <div>
+                    <h3>Health Management</h3>
+                    <p className="subtitle">Track vaccinations, treatments and medical history.</p>
+                </div>
+                <button className="button-primary" onClick={() => setShowAdd(true)}>
+                    <Plus size={18} /> Add Health Record
+                </button>
+            </div>
+
+            {showAdd && (
+                <div className="modal-overlay">
+                    <div className="form-container glass" style={{ maxWidth: '500px' }}>
+                        <h3>New Health Record</h3>
+                        <form onSubmit={handleSubmit} className="entry-form">
+                            <div className="input-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div className="input-group">
+                                    <label>Animal Tag</label>
+                                    <input value={formData.livestockId} onChange={(e) => setFormData({ ...formData, livestockId: e.target.value })} required placeholder="COW-001" />
+                                </div>
+                                <div className="input-group">
+                                    <label>Date</label>
+                                    <input type="date" value={formData.recordDate} onChange={(e) => setFormData({ ...formData, recordDate: e.target.value })} required />
+                                </div>
+                            </div>
+                            <div className="input-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div className="input-group">
+                                    <label>Record Type</label>
+                                    <select value={formData.recordType} onChange={(e) => setFormData({ ...formData, recordType: e.target.value })}>
+                                        <option value="vaccination">Vaccination</option>
+                                        <option value="treatment">Treatment</option>
+                                        <option value="checkup">Routine Checkup</option>
+                                        <option value="surgery">Surgery</option>
+                                        <option value="deworming">Deworming</option>
+                                    </select>
+                                </div>
+                                <div className="input-group">
+                                    <label>Cost (KShs)</label>
+                                    <input type="number" value={formData.cost} onChange={(e) => setFormData({ ...formData, cost: parseFloat(e.target.value) })} />
+                                </div>
+                            </div>
+                            <div className="input-group">
+                                <label>Description / Notes</label>
+                                <textarea
+                                    value={formData.description}
+                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                    rows={3}
+                                    style={{ background: 'var(--bg-accent)', border: '1px solid var(--glass-border)', color: 'white', padding: '0.75rem', borderRadius: 'var(--radius-sm)' }}
+                                    placeholder="Enter details about the treatment or vaccination..."
+                                />
+                            </div>
+                            <div className="input-group">
+                                <label>Next Follow-up Date (Optional)</label>
+                                <input type="date" value={formData.nextVisit} onChange={(e) => setFormData({ ...formData, nextVisit: e.target.value })} />
+                            </div>
+                            <div className="form-actions">
+                                <button type="button" className="button-secondary" onClick={() => setShowAdd(false)}>Cancel</button>
+                                <button type="submit" className="button-primary">Save Record</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            <div className="table-container" style={{ marginTop: '1rem' }}>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Animal</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th>Next Visit</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {records.length === 0 ? (
+                            <tr><td colSpan={6} style={{ textAlign: 'center', padding: '2rem' }}>No medical history yet</td></tr>
+                        ) : (
+                            records.map(record => (
+                                <tr key={record.id}>
+                                    <td>{record.record_date}</td>
+                                    <td><Tag size={12} style={{ opacity: 0.6 }} /> {record.livestock_id}</td>
+                                    <td>
+                                        <span className="badge" style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', textTransform: 'capitalize' }}>
+                                            {record.record_type}
+                                        </span>
+                                    </td>
+                                    <td style={{ maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={record.description}>
+                                        {record.description}
+                                    </td>
+                                    <td>
+                                        {record.next_visit ? (
+                                            <div style={{ color: 'var(--accent-warning)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }}>
+                                                <Calendar size={12} /> {record.next_visit}
+                                            </div>
+                                        ) : '-'}
+                                    </td>
+                                    <td>
+                                        <button className="btn-icon danger"><Trash2 size={14} /></button>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
+
+const Tag: React.FC<{ size?: number; style?: React.CSSProperties }> = ({ size = 18, style }) => (
+    <Activity size={size} style={style} />
+);
+
+export default LivestockHealth;
