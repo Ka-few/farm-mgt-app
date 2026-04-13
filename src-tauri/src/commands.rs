@@ -89,6 +89,40 @@ pub fn record_labor(
     Ok(id)
 }
 
+#[tauri::command]
+pub fn get_labor_logs(state: State<DbState>) -> Result<Vec<serde_json::Value>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare("
+        SELECT l.id, l.worker_id, w.name as worker_name, l.plot_id, p.name as plot_name, l.activity, l.date, l.amount, l.created_at
+        FROM labor_records l
+        LEFT JOIN workers w ON l.worker_id = w.id
+        LEFT JOIN plots p ON l.plot_id = p.id
+        ORDER BY l.date DESC
+    ").map_err(|e| e.to_string())?;
+
+    let rows = stmt
+        .query_map([], |row| {
+            Ok(serde_json::json!({
+                "id": row.get::<_, String>(0)?,
+                "worker_id": row.get::<_, String>(1)?,
+                "worker_name": row.get::<_, Option<String>>(2)?,
+                "plot_id": row.get::<_, Option<String>>(3)?,
+                "plot_name": row.get::<_, Option<String>>(4)?,
+                "activity": row.get::<_, String>(5)?,
+                "date": row.get::<_, String>(6)?,
+                "amount": row.get::<_, f64>(7)?,
+                "created_at": row.get::<_, String>(8)?
+            }))
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut logs = Vec::new();
+    for row in rows {
+        logs.push(row.map_err(|e| e.to_string())?);
+    }
+    Ok(logs)
+}
+
 // --- Plot & Crop Commands ---
 
 #[tauri::command]
@@ -188,6 +222,230 @@ pub fn add_crop(
         params![id, plot_id, name, variety, "Planting", date],
     ).map_err(|e| e.to_string())?;
     Ok(id)
+}
+
+// --- Weeding Commands ---
+
+#[tauri::command]
+pub fn add_weeding_record(
+    state: State<DbState>,
+    crop_id: String,
+    mode: String,
+    herbicide_name: Option<String>,
+    date: String,
+    cost: f64,
+    notes: Option<String>,
+) -> Result<String, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let id = Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT INTO weeding_records (id, crop_id, mode, herbicide_name, date, cost, notes) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        params![id, crop_id, mode, herbicide_name, date, cost, notes],
+    ).map_err(|e| e.to_string())?;
+
+    if cost > 0.0 {
+        let finance_id = Uuid::new_v4().to_string();
+        conn.execute(
+            "INSERT INTO finance_records (id, type, category, amount, date, description, linked_entity_type, linked_entity_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            params![finance_id, "expense", "Crop Inputs", cost, date, format!("Weeding ({})", mode), "weeding_records", id],
+        ).ok();
+    }
+
+    Ok(id)
+}
+
+#[tauri::command]
+pub fn get_weeding_records(
+    state: State<DbState>,
+    crop_id: Option<String>,
+) -> Result<Vec<serde_json::Value>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let mut records = Vec::new();
+
+    let sql = if crop_id.is_some() {
+        "SELECT w.id, w.crop_id, c.name as crop_name, w.mode, w.herbicide_name, w.date, w.cost, w.notes, w.created_at FROM weeding_records w LEFT JOIN crops c ON w.crop_id = c.id WHERE w.crop_id = ?1 ORDER BY w.date DESC"
+    } else {
+        "SELECT w.id, w.crop_id, c.name as crop_name, w.mode, w.herbicide_name, w.date, w.cost, w.notes, w.created_at FROM weeding_records w LEFT JOIN crops c ON w.crop_id = c.id ORDER BY w.date DESC"
+    };
+
+    let mut stmt = conn.prepare(sql).map_err(|e| e.to_string())?;
+
+    let rows = if let Some(cid) = crop_id {
+        stmt.query_map(params![cid], |row| {
+            Ok(serde_json::json!({
+                "id": row.get::<_, String>(0)?,
+                "crop_id": row.get::<_, Option<String>>(1)?,
+                "crop_name": row.get::<_, Option<String>>(2)?,
+                "mode": row.get::<_, String>(3)?,
+                "herbicide_name": row.get::<_, Option<String>>(4)?,
+                "date": row.get::<_, String>(5)?,
+                "cost": row.get::<_, f64>(6)?,
+                "notes": row.get::<_, Option<String>>(7)?,
+                "created_at": row.get::<_, String>(8)?
+            }))
+        })
+        .map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect()
+    } else {
+        stmt.query_map([], |row| {
+            Ok(serde_json::json!({
+                "id": row.get::<_, String>(0)?,
+                "crop_id": row.get::<_, Option<String>>(1)?,
+                "crop_name": row.get::<_, Option<String>>(2)?,
+                "mode": row.get::<_, String>(3)?,
+                "herbicide_name": row.get::<_, Option<String>>(4)?,
+                "date": row.get::<_, String>(5)?,
+                "cost": row.get::<_, f64>(6)?,
+                "notes": row.get::<_, Option<String>>(7)?,
+                "created_at": row.get::<_, String>(8)?
+            }))
+        })
+        .map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect()
+    };
+
+    records = rows;
+    Ok(records)
+}
+
+#[tauri::command]
+pub fn delete_weeding_record(state: State<DbState>, id: String) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM weeding_records WHERE id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn update_weeding_record(
+    state: State<DbState>,
+    id: String,
+    crop_id: String,
+    mode: String,
+    herbicide_name: Option<String>,
+    date: String,
+    cost: f64,
+    notes: Option<String>,
+) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "UPDATE weeding_records SET crop_id = ?1, mode = ?2, herbicide_name = ?3, date = ?4, cost = ?5, notes = ?6 WHERE id = ?7",
+        params![crop_id, mode, herbicide_name, date, cost, notes, id],
+    ).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+// --- Harvest Commands ---
+
+#[tauri::command]
+pub fn add_harvest_record(
+    state: State<DbState>,
+    crop_id: String,
+    quantity: f64,
+    unit: String,
+    harvest_date: String,
+    cost: f64,
+    notes: Option<String>,
+) -> Result<String, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let id = Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT INTO harvest_records (id, crop_id, quantity, unit, harvest_date, cost, notes) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        params![id, crop_id, quantity, unit, harvest_date, cost, notes],
+    ).map_err(|e| e.to_string())?;
+
+    if cost > 0.0 {
+        let finance_id = Uuid::new_v4().to_string();
+        conn.execute(
+            "INSERT INTO finance_records (id, type, category, amount, date, description, linked_entity_type, linked_entity_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            params![finance_id, "expense", "Crop Inputs", cost, harvest_date, "Harvesting costs", "harvest_records", id],
+        ).ok();
+    }
+
+    Ok(id)
+}
+
+#[tauri::command]
+pub fn get_harvest_records(
+    state: State<DbState>,
+    crop_id: Option<String>,
+) -> Result<Vec<serde_json::Value>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+
+    let sql = if crop_id.is_some() {
+        "SELECT h.id, h.crop_id, c.name as crop_name, h.quantity, h.unit, h.harvest_date, h.cost, h.notes, h.created_at FROM harvest_records h LEFT JOIN crops c ON h.crop_id = c.id WHERE h.crop_id = ?1 ORDER BY h.harvest_date DESC"
+    } else {
+        "SELECT h.id, h.crop_id, c.name as crop_name, h.quantity, h.unit, h.harvest_date, h.cost, h.notes, h.created_at FROM harvest_records h LEFT JOIN crops c ON h.crop_id = c.id ORDER BY h.harvest_date DESC"
+    };
+
+    let mut stmt = conn.prepare(sql).map_err(|e| e.to_string())?;
+
+    let records = if let Some(cid) = crop_id {
+        stmt.query_map(params![cid], |row| {
+            Ok(serde_json::json!({
+                "id": row.get::<_, String>(0)?,
+                "crop_id": row.get::<_, Option<String>>(1)?,
+                "crop_name": row.get::<_, Option<String>>(2)?,
+                "quantity": row.get::<_, f64>(3)?,
+                "unit": row.get::<_, String>(4)?,
+                "harvest_date": row.get::<_, String>(5)?,
+                "cost": row.get::<_, f64>(6)?,
+                "notes": row.get::<_, Option<String>>(7)?,
+                "created_at": row.get::<_, String>(8)?
+            }))
+        })
+        .map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect()
+    } else {
+        stmt.query_map([], |row| {
+            Ok(serde_json::json!({
+                "id": row.get::<_, String>(0)?,
+                "crop_id": row.get::<_, Option<String>>(1)?,
+                "crop_name": row.get::<_, Option<String>>(2)?,
+                "quantity": row.get::<_, f64>(3)?,
+                "unit": row.get::<_, String>(4)?,
+                "harvest_date": row.get::<_, String>(5)?,
+                "cost": row.get::<_, f64>(6)?,
+                "notes": row.get::<_, Option<String>>(7)?,
+                "created_at": row.get::<_, String>(8)?
+            }))
+        })
+        .map_err(|e| e.to_string())?
+        .filter_map(|r| r.ok())
+        .collect()
+    };
+
+    Ok(records)
+}
+
+#[tauri::command]
+pub fn delete_harvest_record(state: State<DbState>, id: String) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM harvest_records WHERE id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn update_harvest_record(
+    state: State<DbState>,
+    id: String,
+    crop_id: String,
+    quantity: f64,
+    unit: String,
+    harvest_date: String,
+    cost: f64,
+    notes: Option<String>,
+) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "UPDATE harvest_records SET crop_id = ?1, quantity = ?2, unit = ?3, harvest_date = ?4, cost = ?5, notes = ?6 WHERE id = ?7",
+        params![crop_id, quantity, unit, harvest_date, cost, notes, id],
+    ).map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 #[tauri::command]

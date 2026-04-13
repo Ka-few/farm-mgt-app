@@ -130,6 +130,30 @@ pub fn establish_connection(app: &AppHandle) -> Connection {
             FOREIGN KEY(plot_id) REFERENCES plots(id)
         );
 
+        CREATE TABLE IF NOT EXISTS weeding_records (
+            id TEXT PRIMARY KEY,
+            crop_id TEXT,
+            mode TEXT NOT NULL,
+            herbicide_name TEXT,
+            date DATE NOT NULL,
+            cost REAL DEFAULT 0,
+            notes TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(crop_id) REFERENCES crops(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS harvest_records (
+            id TEXT PRIMARY KEY,
+            crop_id TEXT,
+            quantity REAL NOT NULL,
+            unit TEXT NOT NULL,
+            harvest_date DATE NOT NULL,
+            cost REAL DEFAULT 0,
+            notes TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(crop_id) REFERENCES crops(id)
+        );
+
         CREATE TABLE IF NOT EXISTS irrigation_records (
             id TEXT PRIMARY KEY,
             plot_id TEXT,
