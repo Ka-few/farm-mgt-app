@@ -12,6 +12,7 @@ import Crops from "./modules/crops/Crops";
 import Irrigation from "./modules/crops/Irrigation";
 import Finance from "./modules/finance/Finance";
 import Livestock from "./modules/livestock/Livestock";
+import Reports from "./modules/reports/Reports";
 
 function App() {
   useEffect(() => {
@@ -30,6 +31,7 @@ function App() {
           <Route path="/finance" element={<Finance />} />
           <Route path="/settings" element={<FarmSetup />} />
           <Route path="/workers/logs" element={<LaborLogs />} />
+          <Route path="/reports" element={<Reports />} />
         </Routes>
       </Shell>
     </Router>

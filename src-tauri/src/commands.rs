@@ -260,7 +260,7 @@ pub fn get_irrigation_records(state: State<DbState>) -> Result<Vec<IrrigationRec
 #[tauri::command]
 pub fn get_livestock(state: State<DbState>) -> Result<Vec<crate::models::Livestock>, String> {
     let conn = state.0.lock().map_err(|e| e.to_string())?;
-    let mut stmt = conn.prepare("SELECT id, tag, name, species, breed, dob, status, created_at FROM livestock ORDER BY created_at DESC")
+    let mut stmt = conn.prepare("SELECT id, tag, name, species, breed, dob, status, quantity, created_at FROM livestock ORDER BY created_at DESC")
         .map_err(|e| e.to_string())?;
 
     let livestock_iter = stmt
@@ -273,7 +273,8 @@ pub fn get_livestock(state: State<DbState>) -> Result<Vec<crate::models::Livesto
                 breed: row.get(4)?,
                 dob: row.get(5)?,
                 status: row.get(6)?,
-                created_at: row.get(7)?,
+                quantity: row.get(7)?,
+                created_at: row.get(8)?,
             })
         })
         .map_err(|e| e.to_string())?;
@@ -293,12 +294,14 @@ pub fn add_livestock(
     species: String,
     breed: String,
     dob: String,
+    quantity: Option<i32>,
 ) -> Result<String, String> {
     let conn = state.0.lock().map_err(|e| e.to_string())?;
     let id = Uuid::new_v4().to_string();
+    let qty = quantity.unwrap_or(1);
     conn.execute(
-        "INSERT INTO livestock (id, tag, name, species, breed, dob) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-        params![id, tag, name, species, breed, dob],
+        "INSERT INTO livestock (id, tag, name, species, breed, dob, quantity) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        params![id, tag, name, species, breed, dob, qty],
     ).map_err(|e| e.to_string())?;
     Ok(id)
 }
@@ -313,11 +316,13 @@ pub fn update_livestock(
     breed: String,
     dob: String,
     status: String,
+    quantity: Option<i32>,
 ) -> Result<(), String> {
     let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let qty = quantity.unwrap_or(1);
     conn.execute(
-        "UPDATE livestock SET tag = ?1, name = ?2, species = ?3, breed = ?4, dob = ?5, status = ?6 WHERE id = ?7",
-        params![tag, name, species, breed, dob, status, id],
+        "UPDATE livestock SET tag = ?1, name = ?2, species = ?3, breed = ?4, dob = ?5, status = ?6, quantity = ?7 WHERE id = ?8",
+        params![tag, name, species, breed, dob, status, qty, id],
     ).map_err(|e| e.to_string())?;
     Ok(())
 }
@@ -448,6 +453,35 @@ pub fn record_production(
     ).map_err(|e| e.to_string())?;
 
     Ok(id)
+}
+
+#[tauri::command]
+pub fn update_production(
+    state: State<DbState>,
+    id: String,
+    livestock_id: Option<String>,
+    production_type: String,
+    quantity: f64,
+    unit: String,
+    morning_qty: Option<f64>,
+    noon_qty: Option<f64>,
+    evening_qty: Option<f64>,
+    recorded_at: String,
+) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "UPDATE production_logs SET livestock_id = ?1, type = ?2, quantity = ?3, unit = ?4, morning_qty = ?5, noon_qty = ?6, evening_qty = ?7, recorded_at = ?8 WHERE id = ?9",
+        params![livestock_id, production_type, quantity, unit, morning_qty, noon_qty, evening_qty, recorded_at, id],
+    ).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn delete_production(state: State<DbState>, id: String) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM production_logs WHERE id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 #[tauri::command]
@@ -631,12 +665,14 @@ pub fn add_finance_record(
     amount: f64,
     date: String,
     description: String,
+    linked_entity_type: Option<String>,
+    linked_entity_id: Option<String>,
 ) -> Result<String, String> {
     let conn = state.0.lock().map_err(|e| e.to_string())?;
     let id = Uuid::new_v4().to_string();
     conn.execute(
-        "INSERT INTO finance_records (id, type, category, amount, date, description) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-        params![id, record_type, category, amount, date, description],
+        "INSERT INTO finance_records (id, type, category, amount, date, description, linked_entity_type, linked_entity_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        params![id, record_type, category, amount, date, description, linked_entity_type, linked_entity_id],
     ).map_err(|e| e.to_string())?;
     Ok(id)
 }
@@ -828,11 +864,13 @@ pub fn update_finance_record(
     amount: f64,
     date: String,
     description: String,
+    linked_entity_type: Option<String>,
+    linked_entity_id: Option<String>,
 ) -> Result<(), String> {
     let conn = state.0.lock().map_err(|e| e.to_string())?;
     conn.execute(
-        "UPDATE finance_records SET type = ?1, category = ?2, amount = ?3, date = ?4, description = ?5 WHERE id = ?6",
-        params![record_type, category, amount, date, description, id],
+        "UPDATE finance_records SET type = ?1, category = ?2, amount = ?3, date = ?4, description = ?5, linked_entity_type = ?6, linked_entity_id = ?7 WHERE id = ?8",
+        params![record_type, category, amount, date, description, linked_entity_type, linked_entity_id, id],
     ).map_err(|e| e.to_string())?;
     Ok(())
 }

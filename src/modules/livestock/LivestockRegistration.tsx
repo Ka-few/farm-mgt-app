@@ -10,17 +10,21 @@ interface Animal {
     breed: string;
     dob: string;
     status: string;
+    quantity: number;
 }
 
 const LivestockRegistration: React.FC = () => {
     const [animals, setAnimals] = useState<Animal[]>([]);
     const [showAdd, setShowAdd] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
     const [formData, setFormData] = useState({
         tag: '',
         name: '',
         species: 'dairy',
         breed: '',
-        dob: ''
+        dob: '',
+        status: 'active',
+        quantity: 1
     });
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -40,15 +44,34 @@ const LivestockRegistration: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await invoke('add_livestock', formData);
+            if (editingId) {
+                await invoke('update_livestock', { ...formData, id: editingId });
+            } else {
+                await invoke('add_livestock', formData);
+            }
             setShowAdd(false);
-            setFormData({ tag: '', name: '', species: 'dairy', breed: '', dob: '' });
+            setEditingId(null);
+            setFormData({ tag: '', name: '', species: 'dairy', breed: '', dob: '', status: 'active', quantity: 1 });
             loadAnimals();
-            alert('Animal registered successfully!');
+            alert(`Animal ${editingId ? 'updated' : 'registered'} successfully!`);
         } catch (err) {
             console.error(err);
-            alert('Error registering animal');
+            alert(`Error ${editingId ? 'updating' : 'registering'} animal: ${err}`);
         }
+    };
+
+    const handleEditClick = (animal: Animal) => {
+        setFormData({
+            tag: animal.tag || '',
+            name: animal.name || '',
+            species: animal.species || 'dairy',
+            breed: animal.breed || '',
+            dob: animal.dob || '',
+            status: animal.status || 'active',
+            quantity: animal.quantity || 1
+        });
+        setEditingId(animal.id);
+        setShowAdd(true);
     };
 
     const handleDelete = async (id: string) => {
@@ -79,7 +102,7 @@ const LivestockRegistration: React.FC = () => {
                         style={{ background: 'none', border: 'none', color: 'white', padding: '0.75rem', width: '100%', outline: 'none' }}
                     />
                 </div>
-                <button className="button-primary" onClick={() => setShowAdd(true)}>
+                <button className="button-primary" onClick={() => { setEditingId(null); setFormData({ tag: '', name: '', species: 'dairy', breed: '', dob: '', status: 'active', quantity: 1 }); setShowAdd(true); }}>
                     <Plus size={18} /> Add Animal
                 </button>
             </div>
@@ -87,7 +110,7 @@ const LivestockRegistration: React.FC = () => {
             {showAdd && (
                 <div className="modal-overlay">
                     <div className="form-container glass" style={{ maxWidth: '500px' }}>
-                        <h3>Register New Animal</h3>
+                        <h3>{editingId ? 'Edit Animal' : 'Register New Animal'}</h3>
                         <form onSubmit={handleSubmit} className="entry-form">
                             <div className="input-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                 <div className="input-group">
@@ -116,13 +139,33 @@ const LivestockRegistration: React.FC = () => {
                                     <input value={formData.breed} onChange={(e) => setFormData({ ...formData, breed: e.target.value })} placeholder="e.g. Holstein" />
                                 </div>
                             </div>
-                            <div className="input-group">
-                                <label>Date of Birth</label>
-                                <input type="date" value={formData.dob} onChange={(e) => setFormData({ ...formData, dob: e.target.value })} />
+                            {formData.species === 'poultry' && (
+                                <div className="input-row" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', marginBottom: '1rem' }}>
+                                    <div className="input-group">
+                                        <label>Flock Size (Number of Birds)</label>
+                                        <input type="number" min="1" value={formData.quantity} onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 1 })} required />
+                                    </div>
+                                </div>
+                            )}
+                            <div className="input-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div className="input-group">
+                                    <label>Date of Birth</label>
+                                    <input type="date" value={formData.dob} onChange={(e) => setFormData({ ...formData, dob: e.target.value })} />
+                                </div>
+                                {editingId && (
+                                    <div className="input-group">
+                                        <label>Status</label>
+                                        <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })}>
+                                            <option value="active">Active</option>
+                                            <option value="sold">Sold</option>
+                                            <option value="deceased">Deceased</option>
+                                        </select>
+                                    </div>
+                                )}
                             </div>
                             <div className="form-actions">
-                                <button type="button" className="button-secondary" onClick={() => setShowAdd(false)}>Cancel</button>
-                                <button type="submit" className="button-primary">Register</button>
+                                <button type="button" className="button-secondary" onClick={() => { setShowAdd(false); setEditingId(null); setFormData({ tag: '', name: '', species: 'dairy', breed: '', dob: '', status: 'active', quantity: 1 }); }}>Cancel</button>
+                                <button type="submit" className="button-primary">{editingId ? 'Update' : 'Register'}</button>
                             </div>
                         </form>
                     </div>
@@ -149,7 +192,10 @@ const LivestockRegistration: React.FC = () => {
                                 <tr key={animal.id}>
                                     <td><Tag size={14} style={{ marginRight: '0.5rem' }} /> {animal.tag}</td>
                                     <td>{animal.name || '-'}</td>
-                                    <td style={{ textTransform: 'capitalize' }}>{animal.species}</td>
+                                    <td style={{ textTransform: 'capitalize' }}>
+                                        {animal.species}
+                                        {animal.species === 'poultry' && animal.quantity > 1 && ` (${animal.quantity} Birds)`}
+                                    </td>
                                     <td>{animal.breed || '-'}</td>
                                     <td>
                                         <span className={`badge ${animal.status === 'active' ? 'badge-success' : 'badge-warning'}`}>
@@ -158,7 +204,7 @@ const LivestockRegistration: React.FC = () => {
                                     </td>
                                     <td>
                                         <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                            <button className="btn-icon"><Edit2 size={14} /></button>
+                                            <button className="btn-icon" onClick={() => handleEditClick(animal)}><Edit2 size={14} /></button>
                                             <button className="btn-icon danger" onClick={() => handleDelete(animal.id)}><Trash2 size={14} /></button>
                                         </div>
                                     </td>

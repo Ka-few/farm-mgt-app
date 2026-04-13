@@ -9,7 +9,8 @@ import {
     Wallet,
     Settings,
     Menu,
-    Clock
+    Clock,
+    FileText
 } from 'lucide-react';
 import '../styles/Shell.css';
 
@@ -23,7 +24,7 @@ const Shell: React.FC<ShellProps> = ({ children }) => {
             <aside className="sidebar glass">
                 <div className="sidebar-header">
                     <div className="logo-icon">🌿</div>
-                    <span className="logo-text">FarmOS</span>
+                    <span className="logo-text">JOMUKU FARM</span>
                 </div>
 
                 <nav className="sidebar-nav">
@@ -60,6 +61,11 @@ const Shell: React.FC<ShellProps> = ({ children }) => {
                     <NavLink to="/finance" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                         <Wallet size={20} />
                         <span>Finance</span>
+                    </NavLink>
+
+                    <NavLink to="/reports" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                        <FileText size={20} />
+                        <span>Reports</span>
                     </NavLink>
                 </nav>
 

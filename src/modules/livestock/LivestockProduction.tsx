@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Droplets, Utensils, Calendar, Plus, Trash2 } from 'lucide-react';
+import { Droplets, Utensils, Calendar, Plus, Trash2, Edit2 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 
 interface ProductionLog {
@@ -20,6 +20,7 @@ const LivestockProduction: React.FC = () => {
     const [logs, setLogs] = useState<ProductionLog[]>([]);
     const [livestock, setLivestock] = useState<any[]>([]);
     const [showAdd, setShowAdd] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
     const [animalId, setAnimalId] = useState('');
     const [prodType, setProdType] = useState('milk');
     const [quantity, setQuantity] = useState('');
@@ -57,17 +58,25 @@ const LivestockProduction: React.FC = () => {
         e.preventDefault();
         try {
             const finalQuantity = prodType === 'milk' ? totalMilk : parseFloat(quantity);
-            await invoke('record_production', {
+            const payload = {
                 livestockId: animalId || null,
                 productionType: prodType,
                 quantity: finalQuantity,
                 unit,
-                morningQty: prodType === 'milk' ? (parseFloat(morning) || 0) : 0,
-                noonQty: prodType === 'milk' ? (parseFloat(noon) || 0) : 0,
-                eveningQty: prodType === 'milk' ? (parseFloat(evening) || 0) : 0,
+                morningQty: prodType === 'milk' ? (parseFloat(morning) || 0) : null,
+                noonQty: prodType === 'milk' ? (parseFloat(noon) || 0) : null,
+                eveningQty: prodType === 'milk' ? (parseFloat(evening) || 0) : null,
                 recordedAt: new Date().toISOString()
-            });
+            };
+
+            if (editingId) {
+                await invoke('update_production', { id: editingId, ...payload });
+            } else {
+                await invoke('record_production', payload);
+            }
+
             setShowAdd(false);
+            setEditingId(null);
             setAnimalId('');
             setQuantity('');
             setMorning('');
@@ -75,8 +84,29 @@ const LivestockProduction: React.FC = () => {
             setEvening('');
             loadLogs();
         } catch (err) {
-            console.error(err);
-            alert('Error recording production');
+            alert(`Error ${editingId ? 'updating' : 'recording'} production: ${err}`);
+        }
+    };
+
+    const handleEditClick = (log: ProductionLog) => {
+        setEditingId(log.id);
+        setAnimalId(log.livestock_id || '');
+        setProdType(log.production_type);
+        setQuantity(log.quantity.toString());
+        setUnit(log.unit);
+        setMorning(log.morning_qty?.toString() || '');
+        setNoon(log.noon_qty?.toString() || '');
+        setEvening(log.evening_qty?.toString() || '');
+        setShowAdd(true);
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!window.confirm('Delete this record?')) return;
+        try {
+            await invoke('delete_production', { id });
+            loadLogs();
+        } catch (err) {
+            alert('Error deleting record: ' + err);
         }
     };
 
@@ -87,7 +117,11 @@ const LivestockProduction: React.FC = () => {
                     <h3>Yield & Production</h3>
                     <p className="subtitle">Track milk output and meat/beef production.</p>
                 </div>
-                <button className="button-primary" onClick={() => setShowAdd(true)}>
+                <button className="button-primary" onClick={() => {
+                    setEditingId(null);
+                    setAnimalId(''); setQuantity(''); setMorning(''); setNoon(''); setEvening(''); setProdType('milk'); setUnit('L');
+                    setShowAdd(true);
+                }}>
                     <Plus size={18} /> Record Production
                 </button>
             </div>
@@ -95,7 +129,7 @@ const LivestockProduction: React.FC = () => {
             {showAdd && (
                 <div className="modal-overlay">
                     <div className="form-container glass" style={{ maxWidth: '450px' }}>
-                        <h3>Record Production</h3>
+                        <h3>{editingId ? 'Edit Production Record' : 'Record Production'}</h3>
                         <form onSubmit={handleSubmit} className="entry-form">
                             <div className="input-group">
                                 <label>Animal / Tag (Optional)</label>
@@ -117,7 +151,7 @@ const LivestockProduction: React.FC = () => {
                                     <label>Production Type</label>
                                     <select value={prodType} onChange={(e) => {
                                         setProdType(e.target.value);
-                                        setUnit(e.target.value === 'milk' ? 'L' : 'Kg');
+                                        setUnit(e.target.value === 'milk' ? 'L' : (e.target.value === 'eggs' ? 'Pieces' : 'Kg'));
                                     }}>
                                         <option value="milk">Milk (Dairy)</option>
                                         <option value="beef">Meat/Beef</option>
@@ -128,7 +162,7 @@ const LivestockProduction: React.FC = () => {
                                     <div className="input-group">
                                         <label>Quantity</label>
                                         <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                            <input type="number" step="0.1" value={quantity} onChange={(e) => setQuantity(e.target.value)} required style={{ flex: 1 }} />
+                                            <input type="number" step={prodType === 'eggs' ? "1" : "0.1"} min="1" value={quantity} onChange={(e) => setQuantity(e.target.value)} required style={{ flex: 1 }} />
                                             <span style={{ display: 'flex', alignItems: 'center', padding: '0.5rem', background: 'var(--bg-accent)', borderRadius: 'var(--radius-sm)' }}>{unit}</span>
                                         </div>
                                     </div>
@@ -163,8 +197,8 @@ const LivestockProduction: React.FC = () => {
                                 </>
                             )}
                             <div className="form-actions">
-                                <button type="button" className="button-secondary" onClick={() => setShowAdd(false)}>Cancel</button>
-                                <button type="submit" className="button-primary">Save Record</button>
+                                <button type="button" className="button-secondary" onClick={() => { setShowAdd(false); setEditingId(null); }}>Cancel</button>
+                                <button type="submit" className="button-primary">{editingId ? 'Update Record' : 'Save Record'}</button>
                             </div>
                         </form>
                     </div>
@@ -207,7 +241,10 @@ const LivestockProduction: React.FC = () => {
                                     </td>
                                     <td style={{ fontWeight: 600 }}>{log.quantity} {log.unit}</td>
                                     <td>
-                                        <button className="btn-icon danger"><Trash2 size={14} /></button>
+                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                            <button className="btn-icon" onClick={() => handleEditClick(log)}><Edit2 size={14} /></button>
+                                            <button className="btn-icon danger" onClick={() => handleDelete(log.id)}><Trash2 size={14} /></button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))

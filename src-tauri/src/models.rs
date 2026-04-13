@@ -52,6 +52,7 @@ pub struct Livestock {
     pub breed: Option<String>,
     pub dob: Option<String>,
     pub status: Option<String>,
+    pub quantity: Option<i32>,
     pub created_at: Option<String>,
 }
 

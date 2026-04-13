@@ -37,6 +37,8 @@ pub fn run() {
             commands::add_livestock,
             commands::update_livestock,
             commands::delete_livestock,
+            commands::update_production,
+            commands::delete_production,
             commands::get_health_records,
             commands::add_health_record,
             commands::get_production_summary,

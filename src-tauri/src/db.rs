@@ -76,6 +76,7 @@ pub fn establish_connection(app: &AppHandle) -> Connection {
             breed TEXT,
             dob DATE,
             status TEXT DEFAULT 'active',
+            quantity INTEGER DEFAULT 1,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
 
@@ -160,6 +161,11 @@ pub fn establish_connection(app: &AppHandle) -> Connection {
     let _ = conn.execute("ALTER TABLE production_logs ADD COLUMN noon_qty REAL", []);
     let _ = conn.execute(
         "ALTER TABLE production_logs ADD COLUMN evening_qty REAL",
+        [],
+    );
+
+    let _ = conn.execute(
+        "ALTER TABLE livestock ADD COLUMN quantity INTEGER DEFAULT 1",
         [],
     );
 
