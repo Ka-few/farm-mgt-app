@@ -11,7 +11,10 @@ interface Worker {
     is_active: number;
 }
 
+import { useToast } from '../../context/ToastContext';
+
 const Workers: React.FC = () => {
+    const { addToast } = useToast();
     const [workers, setWorkers] = useState<Worker[]>([]);
     const [showAdd, setShowAdd] = useState(false);
     const [name, setName] = useState('');
@@ -21,11 +24,11 @@ const Workers: React.FC = () => {
 
     const loadWorkers = async () => {
         try {
-            console.log('Attempting to invoke get_workers. invoke is:', typeof invoke, invoke);
             const result = await invoke<Worker[]>('get_workers');
             setWorkers(result);
         } catch (err) {
             console.error('Failed to load workers:', err);
+            addToast('Failed to load team members', 'error');
         }
     };
 
@@ -38,7 +41,6 @@ const Workers: React.FC = () => {
         if (!name || !role || !rate) return;
 
         try {
-            console.log('Attempting to invoke add_worker. invoke is:', typeof invoke, invoke);
             await invoke('add_worker', {
                 name,
                 role,
@@ -50,9 +52,10 @@ const Workers: React.FC = () => {
             setRate('');
             setShowAdd(false);
             loadWorkers();
-        } catch (err) {
+            addToast('Worker added successfully!', 'success');
+        } catch (err: any) {
             console.error(err);
-            alert('Error adding worker');
+            addToast(`Error adding worker: ${err}`, 'error');
         }
     };
 
@@ -62,9 +65,10 @@ const Workers: React.FC = () => {
         try {
             await invoke('delete_worker', { id });
             loadWorkers();
-        } catch (err) {
+            addToast('Worker archived', 'info');
+        } catch (err: any) {
             console.error(err);
-            alert('Error deleting worker');
+            addToast(`Error deleting worker: ${err}`, 'error');
         }
     };
 
@@ -82,10 +86,10 @@ const Workers: React.FC = () => {
             });
             setEditingWorker(null);
             loadWorkers();
-            alert('Worker profile updated!');
-        } catch (err) {
+            addToast('Worker profile updated!', 'success');
+        } catch (err: any) {
             console.error(err);
-            alert('Failed to update worker');
+            addToast(`Update failed: ${err}`, 'error');
         }
     };
 

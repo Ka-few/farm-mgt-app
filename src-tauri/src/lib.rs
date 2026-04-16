@@ -1,3 +1,4 @@
+mod ai;
 mod commands;
 mod db;
 mod models;
@@ -67,7 +68,8 @@ pub fn run() {
             commands::update_finance_record,
             commands::delete_milk_record,
             commands::update_milk_record,
-            commands::get_milk_records
+            commands::get_milk_records,
+            commands::chat_with_ai
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

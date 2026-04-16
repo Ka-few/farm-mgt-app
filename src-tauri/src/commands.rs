@@ -6,7 +6,11 @@ use uuid::Uuid;
 
 #[tauri::command]
 pub fn get_workers(state: State<DbState>) -> Result<Vec<Worker>, String> {
-    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    get_workers_logic(&state)
+}
+
+pub fn get_workers_logic(db: &DbState) -> Result<Vec<Worker>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn.prepare("SELECT id, name, role, daily_rate, is_active, created_at FROM workers ORDER BY name ASC")
         .map_err(|e| e.to_string())?;
 
@@ -260,7 +264,6 @@ pub fn get_weeding_records(
     crop_id: Option<String>,
 ) -> Result<Vec<serde_json::Value>, String> {
     let conn = state.0.lock().map_err(|e| e.to_string())?;
-    let mut records = Vec::new();
 
     let sql = if crop_id.is_some() {
         "SELECT w.id, w.crop_id, c.name as crop_name, w.mode, w.herbicide_name, w.date, w.cost, w.notes, w.created_at FROM weeding_records w LEFT JOIN crops c ON w.crop_id = c.id WHERE w.crop_id = ?1 ORDER BY w.date DESC"
@@ -306,8 +309,7 @@ pub fn get_weeding_records(
         .collect()
     };
 
-    records = rows;
-    Ok(records)
+    Ok(rows)
 }
 
 #[tauri::command]
@@ -517,7 +519,11 @@ pub fn get_irrigation_records(state: State<DbState>) -> Result<Vec<IrrigationRec
 
 #[tauri::command]
 pub fn get_livestock(state: State<DbState>) -> Result<Vec<crate::models::Livestock>, String> {
-    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    get_livestock_logic(&state)
+}
+
+pub fn get_livestock_logic(db: &DbState) -> Result<Vec<crate::models::Livestock>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn.prepare("SELECT id, tag, name, species, breed, dob, status, quantity, created_at FROM livestock ORDER BY created_at DESC")
         .map_err(|e| e.to_string())?;
 
@@ -859,7 +865,14 @@ pub fn get_finance_summary(
     state: State<DbState>,
     start_date: String,
 ) -> Result<serde_json::Value, String> {
-    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    get_finance_summary_logic(&state, start_date)
+}
+
+pub fn get_finance_summary_logic(
+    db: &DbState,
+    start_date: String,
+) -> Result<serde_json::Value, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
 
     let mut stmt = conn.prepare("SELECT type, SUM(amount) FROM finance_records WHERE date >= ?1 AND is_deleted = 0 GROUP BY type")
         .map_err(|e| e.to_string())?;
@@ -926,7 +939,29 @@ pub fn add_finance_record(
     linked_entity_type: Option<String>,
     linked_entity_id: Option<String>,
 ) -> Result<String, String> {
-    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    add_finance_record_logic(
+        &state,
+        record_type,
+        category,
+        amount,
+        date,
+        description,
+        linked_entity_type,
+        linked_entity_id,
+    )
+}
+
+pub fn add_finance_record_logic(
+    db: &DbState,
+    record_type: String,
+    category: String,
+    amount: f64,
+    date: String,
+    description: String,
+    linked_entity_type: Option<String>,
+    linked_entity_id: Option<String>,
+) -> Result<String, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
     let id = Uuid::new_v4().to_string();
     conn.execute(
         "INSERT INTO finance_records (id, type, category, amount, date, description, linked_entity_type, linked_entity_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
@@ -990,7 +1025,7 @@ pub fn update_farm(
             .prepare("SELECT id FROM farms LIMIT 1")
             .map_err(|e| e.to_string())?;
         let existing_id: Option<String> = stmt
-            .query_row([], |row| row.get(0))
+            .query_row([], |row| row.get::<_, String>(0))
             .optional()
             .map_err(|e| e.to_string())?;
 
@@ -1198,4 +1233,13 @@ pub fn update_milk_record(
     )
     .map_err(|e| e.to_string())?;
     Ok(())
+}
+
+#[tauri::command]
+pub async fn chat_with_ai(
+    state: State<'_, DbState>,
+    history: Vec<ollama_rs::generation::chat::ChatMessage>,
+) -> Result<serde_json::Value, String> {
+    let agent = crate::ai::OllamaAgent::new("llama3.1".to_string());
+    agent.chat(history, &state).await
 }

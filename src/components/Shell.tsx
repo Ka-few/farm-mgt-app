@@ -13,6 +13,7 @@ import {
     FileText
 } from 'lucide-react';
 import '../styles/Shell.css';
+import AIChat from './AIChat';
 
 interface ShellProps {
     children: React.ReactNode;
@@ -96,6 +97,8 @@ const Shell: React.FC<ShellProps> = ({ children }) => {
                     {children}
                 </section>
             </main>
+
+            <AIChat />
         </div>
     );
 };

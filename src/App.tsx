@@ -14,27 +14,33 @@ import Finance from "./modules/finance/Finance";
 import Livestock from "./modules/livestock/Livestock";
 import Reports from "./modules/reports/Reports";
 
+import { ToastProvider } from "./context/ToastContext";
+import ToastContainer from "./components/ToastContainer";
+
 function App() {
   useEffect(() => {
     initDb().catch(console.error);
   }, []);
 
   return (
-    <Router>
-      <Shell>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/crops" element={<Crops />} />
-          <Route path="/livestock" element={<Livestock />} />
-          <Route path="/irrigation" element={<Irrigation />} />
-          <Route path="/workers" element={<Workers />} />
-          <Route path="/finance" element={<Finance />} />
-          <Route path="/settings" element={<FarmSetup />} />
-          <Route path="/workers/logs" element={<LaborLogs />} />
-          <Route path="/reports" element={<Reports />} />
-        </Routes>
-      </Shell>
-    </Router>
+    <ToastProvider>
+      <Router>
+        <Shell>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/crops" element={<Crops />} />
+            <Route path="/livestock" element={<Livestock />} />
+            <Route path="/irrigation" element={<Irrigation />} />
+            <Route path="/workers" element={<Workers />} />
+            <Route path="/finance" element={<Finance />} />
+            <Route path="/settings" element={<FarmSetup />} />
+            <Route path="/workers/logs" element={<LaborLogs />} />
+            <Route path="/reports" element={<Reports />} />
+          </Routes>
+        </Shell>
+      </Router>
+      <ToastContainer />
+    </ToastProvider>
   );
 }
 

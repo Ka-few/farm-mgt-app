@@ -14,7 +14,10 @@ interface Transaction {
     linked_entity_id?: string | null;
 }
 
+import { useToast } from '../../context/ToastContext';
+
 const FinanceExpenses: React.FC = () => {
+    const { addToast } = useToast();
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [category, setCategory] = useState('Feeds');
     const [amount, setAmount] = useState('');
@@ -29,6 +32,7 @@ const FinanceExpenses: React.FC = () => {
             setTransactions(txs.filter(t => t.record_type === 'expense'));
         } catch (err) {
             console.error('Error loading finance data:', err);
+            addToast('Failed to load expense records', 'error');
         }
     };
 
@@ -56,10 +60,10 @@ const FinanceExpenses: React.FC = () => {
             setDescription('');
             setLinkedEntityId('');
             loadData();
-            alert('Expense recorded successfully!');
-        } catch (err) {
+            addToast('Expense recorded successfully!', 'success');
+        } catch (err: any) {
             console.error(err);
-            alert('Error saving expense limit');
+            addToast(`Error saving expense: ${err}`, 'error');
         } finally {
             setLoading(false);
         }
@@ -70,8 +74,9 @@ const FinanceExpenses: React.FC = () => {
         try {
             await invoke('delete_finance_record', { id });
             loadData();
-        } catch (err) {
-            alert('Error deleting transaction: ' + err);
+            addToast('Expense record deleted', 'info');
+        } catch (err: any) {
+            addToast(`Error deleting expense: ${err}`, 'error');
         }
     };
 

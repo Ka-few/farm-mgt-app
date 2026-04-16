@@ -113,7 +113,7 @@ const HealthReport: React.FC = () => {
                             {pieData.length === 0 ? <p style={{ color: 'var(--text-secondary)' }}>No data.</p> : (
                                 <ResponsiveContainer width="100%" height={220}>
                                     <PieChart>
-                                        <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                                        <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`} labelLine={false}>
                                             {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                                         </Pie>
                                         <Tooltip contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: 8 }} />
@@ -131,7 +131,7 @@ const HealthReport: React.FC = () => {
                                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                                         <XAxis dataKey="month" tick={{ fill: 'var(--text-secondary)', fontSize: 10 }} />
                                         <YAxis tick={{ fill: 'var(--text-secondary)', fontSize: 10 }} />
-                                        <Tooltip formatter={(v: number) => `KShs ${v.toLocaleString()}`} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: 8 }} />
+                                        <Tooltip formatter={(v: any) => `KShs ${Number(v).toLocaleString()}`} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: 8 }} />
                                         <Line type="monotone" dataKey="cost" stroke="#f59e0b" strokeWidth={2} dot={{ r: 4 }} />
                                     </LineChart>
                                 </ResponsiveContainer>
@@ -148,7 +148,7 @@ const HealthReport: React.FC = () => {
                                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                                     <XAxis type="number" tick={{ fill: 'var(--text-secondary)', fontSize: 10 }} />
                                     <YAxis dataKey="name" type="category" tick={{ fill: 'var(--text-secondary)', fontSize: 9 }} width={120} />
-                                    <Tooltip formatter={(v: number) => `KShs ${v.toLocaleString()}`} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: 8 }} />
+                                    <Tooltip formatter={(v: any) => `KShs ${Number(v).toLocaleString()}`} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: 8 }} />
                                     <Bar dataKey="cost" name="Cost" fill="#f59e0b" radius={[0, 4, 4, 0]} />
                                 </BarChart>
                             </ResponsiveContainer>

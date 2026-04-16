@@ -12,7 +12,10 @@ interface Transaction {
     description: string;
 }
 
+import { useToast } from '../../context/ToastContext';
+
 const FinanceIncome: React.FC = () => {
+    const { addToast } = useToast();
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [category, setCategory] = useState('Milk Sales');
     const [amount, setAmount] = useState('');
@@ -26,6 +29,7 @@ const FinanceIncome: React.FC = () => {
             setTransactions(txs.filter(t => t.record_type === 'income'));
         } catch (err) {
             console.error('Error loading finance data:', err);
+            addToast('Failed to load income records', 'error');
         }
     };
 
@@ -52,10 +56,10 @@ const FinanceIncome: React.FC = () => {
             setAmount('');
             setDescription('');
             loadData();
-            alert('Income record saved successfully!');
-        } catch (err) {
+            addToast('Income record saved successfully!', 'success');
+        } catch (err: any) {
             console.error(err);
-            alert('Error saving income record');
+            addToast(`Error saving record: ${err}`, 'error');
         } finally {
             setLoading(false);
         }
@@ -66,8 +70,9 @@ const FinanceIncome: React.FC = () => {
         try {
             await invoke('delete_finance_record', { id });
             loadData();
-        } catch (err) {
-            alert('Error deleting transaction: ' + err);
+            addToast('Income record deleted', 'info');
+        } catch (err: any) {
+            addToast(`Error deleting record: ${err}`, 'error');
         }
     };
 
