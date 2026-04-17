@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Wheat, Plus, Trash2, Edit2 } from 'lucide-react';
+import { useToast } from '../../context/ToastContext';
 import '../../styles/Forms.css';
 
 interface Crop { id: string; name: string; variety: string; }
@@ -16,6 +17,7 @@ interface HarvestRecord {
 }
 
 const CropHarvesting: React.FC = () => {
+    const { addToast } = useToast();
     const [records, setRecords] = useState<HarvestRecord[]>([]);
     const [crops, setCrops] = useState<Crop[]>([]);
     const [cropId, setCropId] = useState('');
@@ -43,7 +45,7 @@ const CropHarvesting: React.FC = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!cropId || !quantity) { alert('Please select a crop and enter quantity.'); return; }
+        if (!cropId || !quantity) { addToast('Please select a crop and enter quantity', 'warning'); return; }
         setLoading(true);
         try {
             await invoke('add_harvest_record', {
@@ -56,9 +58,9 @@ const CropHarvesting: React.FC = () => {
             });
             setCropId(''); setQuantity(''); setCost(''); setNotes('');
             loadData();
-            alert('Harvest record saved!');
+            addToast('Harvest record saved successfully', 'success');
         } catch (err) {
-            alert('Error saving harvest: ' + err);
+            addToast('Error saving harvest record: ' + err, 'error');
         } finally {
             setLoading(false);
         }
@@ -66,8 +68,12 @@ const CropHarvesting: React.FC = () => {
 
     const handleDelete = async (id: string) => {
         if (!window.confirm('Delete this harvest record?')) return;
-        try { await invoke('delete_harvest_record', { id }); loadData(); }
-        catch (err) { alert('Error: ' + err); }
+        try {
+            await invoke('delete_harvest_record', { id });
+            loadData();
+            addToast('Harvest record deleted', 'info');
+        }
+        catch (err) { addToast('Error deleting record: ' + err, 'error'); }
     };
 
     const handleUpdate = async (e: React.FormEvent) => {
@@ -85,7 +91,8 @@ const CropHarvesting: React.FC = () => {
             });
             setEditingRecord(null);
             loadData();
-        } catch (err) { alert('Error updating harvest: ' + err); }
+            addToast('Harvest record updated', 'success');
+        } catch (err) { addToast('Error updating harvest record: ' + err, 'error'); }
     };
 
     return (

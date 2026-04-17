@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { MessageSquare, Send, X, Bot, User, Sparkles } from 'lucide-react';
+import { MessageSquare, Send, X, Bot, User, Sparkles, Trash2, Zap } from 'lucide-react';
 import '../styles/AIChat.css';
 
 interface Message {
@@ -9,6 +9,14 @@ interface Message {
 }
 
 import { useToast } from '../context/ToastContext';
+
+const SUGGESTED_PROMPTS = [
+    "List my workers",
+    "Show me all livestock",
+    "Recent expenses",
+    "Irrigation status",
+    "Crop harvesting plan"
+];
 
 const AIChat: React.FC = () => {
     const { addToast } = useToast();
@@ -26,12 +34,35 @@ const AIChat: React.FC = () => {
         scrollToBottom();
     }, [messages]);
 
-    const handleSend = async () => {
-        if (!input.trim() || isLoading) return;
+    const clearMessages = () => {
+        setMessages([]);
+        addToast('Chat history cleared', 'info');
+    };
 
-        const userMessage: Message = { role: 'user', content: input };
+    const handleSuggestionClick = (prompt: string) => {
+        setInput(prompt);
+        // We delay sending slightly to allow the user to see the input population if they want, 
+        // but here we just send it immediately for a punchy UX
+        setTimeout(() => handleSend(prompt), 100);
+    };
+
+    const handleSend = async (customInput?: string) => {
+        const messageText = customInput || input;
+        if (!messageText.trim() || isLoading) return;
+
+        // Diagnostic: Check if we are in a Tauri environment
+        if (typeof window === 'undefined' || !(window as any).__TAURI_INTERNALS__) {
+            addToast('Tauri IPC not found. Make sure you are running via "npm run tauri dev"', 'error');
+            setMessages(prev => [...prev, {
+                role: 'assistant',
+                content: 'Error: Tauri environment not detected. Please run the app using "npm run tauri dev".'
+            }]);
+            return;
+        }
+
+        const userMessage: Message = { role: 'user', content: messageText };
         setMessages(prev => [...prev, userMessage]);
-        setInput('');
+        if (!customInput) setInput('');
         setIsLoading(true);
 
         try {
@@ -54,12 +85,18 @@ const AIChat: React.FC = () => {
                 content: response.message.content
             };
             setMessages(prev => [...prev, aiMessage]);
-        } catch (error) {
+        } catch (error: any) {
             console.error('AI Chat Error:', error);
-            addToast(`AI Error: ${error}`, 'error');
+
+            let errorMsg = error.toString();
+            if (errorMsg.includes('command chat_with_ai not found')) {
+                errorMsg = 'Command "chat_with_ai" not found. Check if it is allowed in capabilities/default.json';
+            }
+
+            addToast(`AI Error: ${errorMsg}`, 'error');
             setMessages(prev => [...prev, {
                 role: 'assistant',
-                content: `Error: ${error}. Make sure Ollama is running and Llama 3.1 is installed.`
+                content: `Error: ${errorMsg}. Make sure Ollama is running and Llama 3.1 is installed.`
             }]);
         } finally {
             setIsLoading(false);
@@ -72,9 +109,14 @@ const AIChat: React.FC = () => {
                 <div className="ai-chat-window glass">
                     <div className="chat-header">
                         <h3><Sparkles size={18} className="text-accent" /> Farm Assistant</h3>
-                        <button className="close-chat-btn" onClick={() => setIsOpen(false)}>
-                            <X size={20} />
-                        </button>
+                        <div className="header-actions">
+                            <button className="clear-chat-btn" onClick={clearMessages} title="Clear history">
+                                <Trash2 size={18} />
+                            </button>
+                            <button className="close-chat-btn" onClick={() => setIsOpen(false)}>
+                                <X size={20} />
+                            </button>
+                        </div>
                     </div>
 
                     <div className="chat-messages">
@@ -106,18 +148,32 @@ const AIChat: React.FC = () => {
                         <div ref={messagesEndRef} />
                     </div>
 
-                    <div className="chat-input-area">
-                        <input
-                            type="text"
-                            placeholder="Ask something..."
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-                            disabled={isLoading}
-                        />
-                        <button className="send-btn" onClick={handleSend} disabled={isLoading}>
-                            <Send size={18} />
-                        </button>
+                    <div className="chat-footer">
+                        <div className="suggestions-row">
+                            {SUGGESTED_PROMPTS.map((prompt, idx) => (
+                                <button
+                                    key={idx}
+                                    className="suggestion-bubble"
+                                    onClick={() => handleSuggestionClick(prompt)}
+                                    disabled={isLoading}
+                                >
+                                    <Zap size={12} /> {prompt}
+                                </button>
+                            ))}
+                        </div>
+                        <div className="chat-input-area">
+                            <input
+                                type="text"
+                                placeholder="Ask something..."
+                                value={input}
+                                onChange={(e) => setInput(e.target.value)}
+                                onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                                disabled={isLoading}
+                            />
+                            <button className="send-btn" onClick={() => handleSend()} disabled={isLoading}>
+                                <Send size={18} />
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

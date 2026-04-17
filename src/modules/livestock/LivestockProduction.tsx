@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Droplets, Utensils, Calendar, Plus, Trash2, Edit2 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
+import { useToast } from '../../context/ToastContext';
 
 interface ProductionLog {
     id: string;
@@ -17,6 +18,7 @@ interface ProductionLog {
 }
 
 const LivestockProduction: React.FC = () => {
+    const { addToast } = useToast();
     const [logs, setLogs] = useState<ProductionLog[]>([]);
     const [livestock, setLivestock] = useState<any[]>([]);
     const [showAdd, setShowAdd] = useState(false);
@@ -83,8 +85,9 @@ const LivestockProduction: React.FC = () => {
             setNoon('');
             setEvening('');
             loadLogs();
+            addToast(`Production record ${editingId ? 'updated' : 'saved'} successfully`, 'success');
         } catch (err) {
-            alert(`Error ${editingId ? 'updating' : 'recording'} production: ${err}`);
+            addToast(`Error ${editingId ? 'updating' : 'recording'} production: ${err}`, 'error');
         }
     };
 
@@ -105,8 +108,9 @@ const LivestockProduction: React.FC = () => {
         try {
             await invoke('delete_production', { id });
             loadLogs();
+            addToast('Production record deleted', 'info');
         } catch (err) {
-            alert('Error deleting record: ' + err);
+            addToast('Error deleting record: ' + err, 'error');
         }
     };
 

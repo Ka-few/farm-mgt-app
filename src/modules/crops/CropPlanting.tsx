@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, MapPin, Trash2, Edit2 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
+import { useToast } from '../../context/ToastContext';
 import '../../styles/Forms.css';
 
 interface Plot {
@@ -20,6 +21,7 @@ interface Crop {
 }
 
 const CropPlanting: React.FC = () => {
+    const { addToast } = useToast();
     const [crops, setCrops] = useState<Crop[]>([]);
     const [plots, setPlots] = useState<Plot[]>([]);
     const [showAdd, setShowAdd] = useState(false);
@@ -63,10 +65,10 @@ const CropPlanting: React.FC = () => {
             setVariety('');
             setShowAdd(false);
             loadCrops();
-            alert('Crop record added successfully!');
+            addToast('Crop record added successfully', 'success');
         } catch (err) {
             console.error(err);
-            alert('Error adding crop');
+            addToast('Error adding crop record', 'error');
         } finally {
             setLoading(false);
         }
@@ -77,9 +79,10 @@ const CropPlanting: React.FC = () => {
         try {
             await invoke('delete_crop', { id });
             loadCrops();
+            addToast('Crop record removed', 'info');
         } catch (err) {
             console.error(err);
-            alert('Error deleting crop');
+            addToast('Error deleting crop record', 'error');
         }
     };
 
@@ -97,10 +100,10 @@ const CropPlanting: React.FC = () => {
             });
             setEditingCrop(null);
             loadCrops();
-            alert('Crop record updated!');
+            addToast('Crop record updated', 'success');
         } catch (err) {
             console.error(err);
-            alert('Failed to update crop');
+            addToast('Failed to update crop record', 'error');
         }
     };
 

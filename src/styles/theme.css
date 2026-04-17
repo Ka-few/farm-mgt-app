@@ -1,25 +1,32 @@
 :root {
   /* Color Palette - Premium Farm Management */
-  --bg-primary: #0f172a;
-  --bg-secondary: #1e293b;
-  --bg-accent: #334155;
+  --bg-primary: #EDF1E9;
+  --bg-secondary: #FFFFFF;
+  --bg-accent: #DDE6DA;
 
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  --text-primary: #1A1A1A;
+  --text-secondary: #4A5550;
+  --text-muted: #7A8681;
 
-  --accent-primary: #10b981;
-  /* Emerald */
-  --accent-secondary: #3b82f6;
-  /* Blue */
-  --accent-warning: #f59e0b;
-  /* Amber */
-  --accent-danger: #ef4444;
-  /* Red */
+  --accent-primary: #1F6F43;
+  --accent-secondary: #2E8B57;
+  --accent-soft: #4CAF50;
 
-  --glass-bg: rgba(30, 41, 59, 0.7);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --gold-primary: #D4AF37;
+  --gold-soft: #E6C766;
+  --gold-muted: #C5A028;
+
+  --accent-success: #2E7D32;
+  --accent-warning: #F9A825;
+  --accent-danger: #C62828;
+
+  --sidebar-bg: #1F3D2B;
+  --sidebar-text: #E8F5E9;
+  --sidebar-active: #2E8B57;
+  --sidebar-hover: #285C3B;
+
+  --shadow-soft: 0 4px 12px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
 
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -44,11 +51,11 @@ body {
 }
 
 .glass {
-  background: var(--glass-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-shadow);
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: var(--shadow-soft);
 }
 
 .button-primary {
@@ -80,7 +87,8 @@ body {
   background: var(--bg-secondary);
   border-radius: var(--radius-md);
   padding: 1.5rem;
-  border: 1px solid var(--glass-border);
+  border: 1px solid #E0E0E0;
+  box-shadow: var(--shadow-soft);
 }
 
 /* Tables */
@@ -99,18 +107,18 @@ table {
 }
 
 th {
-  background: rgba(255, 255, 255, 0.02);
+  background: #F8FAF7;
   padding: 1rem;
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--text-secondary);
-  border-bottom: 1px solid var(--glass-border);
+  border-bottom: 1px solid #E0E0E0;
 }
 
 td {
   padding: 1rem;
   font-size: 0.9375rem;
-  border-bottom: 1px solid var(--glass-border);
+  border-bottom: 1px solid #F0F0F0;
   color: var(--text-primary);
 }
 
@@ -119,7 +127,7 @@ tr:last-child td {
 }
 
 tr:hover td {
-  background: rgba(255, 255, 255, 0.01);
+  background: #F9FAF8;
 }
 
 /* Badges */
@@ -132,18 +140,18 @@ tr:hover td {
 }
 
 .badge-success {
-  background: rgba(16, 185, 129, 0.1);
-  color: var(--accent-primary);
+  background: rgba(46, 125, 50, 0.1);
+  color: var(--accent-success);
 }
 
 .badge-warning {
-  background: rgba(245, 158, 11, 0.1);
+  background: rgba(249, 168, 37, 0.1);
   color: var(--accent-warning);
 }
 
 .badge-info {
-  background: rgba(59, 130, 246, 0.1);
-  color: var(--accent-secondary);
+  background: rgba(31, 111, 67, 0.1);
+  color: var(--accent-primary);
 }
 
 /* Buttons & Inputs */

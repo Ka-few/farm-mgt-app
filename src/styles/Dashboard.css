@@ -27,7 +27,7 @@
     padding: 0.5rem 1rem;
     background: var(--bg-secondary);
     border-radius: var(--radius-sm);
-    border: 1px solid var(--glass-border);
+    border: 1px solid #E0E0E0;
     font-size: 0.875rem;
     color: var(--text-secondary);
 }
@@ -43,12 +43,17 @@
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    border: 1px solid #E0E0E0;
+    box-shadow: var(--shadow-soft);
     transition: var(--transition-fast);
 }
 
 .stat-card:hover {
     transform: translateY(-4px);
-    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: var(--shadow-md);
+    border-color: var(--gold-soft);
 }
 
 .stat-header {
@@ -64,25 +69,28 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    font-size: 1.5rem;
 }
 
 .icon-box.primary {
-    background: rgba(16, 185, 129, 0.1);
-    color: var(--accent-primary);
+    background: var(--bg-accent);
+    color: var(--gold-primary);
+    border: 1px solid var(--gold-soft);
 }
 
 .icon-box.secondary {
-    background: rgba(59, 130, 246, 0.1);
+    background: #F0F4F2;
     color: var(--accent-secondary);
+    border: 1px solid rgba(46, 139, 87, 0.2);
 }
 
 .icon-box.warning {
-    background: rgba(245, 158, 11, 0.1);
+    background: rgba(249, 168, 37, 0.1);
     color: var(--accent-warning);
 }
 
 .icon-box.danger {
-    background: rgba(239, 68, 68, 0.1);
+    background: rgba(198, 40, 40, 0.1);
     color: var(--accent-danger);
 }
 
@@ -94,12 +102,12 @@
 }
 
 .trend.positive {
-    background: rgba(16, 185, 129, 0.1);
-    color: var(--accent-primary);
+    background: rgba(46, 125, 50, 0.1);
+    color: var(--accent-success);
 }
 
 .trend.negative {
-    background: rgba(239, 68, 68, 0.1);
+    background: rgba(198, 40, 40, 0.1);
     color: var(--accent-danger);
 }
 
@@ -144,7 +152,7 @@
 
 .chart-bar {
     flex: 1;
-    background: linear-gradient(to top, var(--accent-primary), rgba(16, 185, 129, 0.3));
+    background: linear-gradient(to top, var(--accent-primary), var(--accent-soft));
     border-radius: 4px 4px 0 0;
     min-width: 20px;
 }
@@ -161,14 +169,15 @@
     align-items: center;
     gap: 1rem;
     padding: 0.75rem;
-    background: rgba(255, 255, 255, 0.02);
+    background: #F9FAF8;
     border-radius: var(--radius-sm);
+    border: 1px solid #F0F0F0;
 }
 
 .task-check {
     width: 20px;
     height: 20px;
-    border: 2px solid var(--glass-border);
+    border: 2px solid #E0E0E0;
     border-radius: 4px;
 }
 

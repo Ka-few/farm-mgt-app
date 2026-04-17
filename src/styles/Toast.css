@@ -16,11 +16,14 @@
     display: flex;
     align-items: center;
     gap: 0.75rem;
+    background: var(--bg-secondary);
+    border: 1px solid #E0E0E0;
+    box-shadow: var(--shadow-md);
     border-radius: var(--radius-md);
     position: relative;
     overflow: hidden;
     animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    transition: var(--transition-medium);
+    transition: var(--transition-fast);
 }
 
 @keyframes slideInRight {
@@ -84,11 +87,11 @@
 
 /* Types */
 .toast-success .toast-icon {
-    color: var(--accent-primary);
+    color: var(--accent-success);
 }
 
 .toast-success .toast-progress {
-    background: var(--accent-primary);
+    background: var(--accent-success);
 }
 
 .toast-error .toast-icon {

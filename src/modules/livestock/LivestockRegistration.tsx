@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, Tag, Edit2, Trash2 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
+import { useToast } from '../../context/ToastContext';
 
 interface Animal {
     id: string;
@@ -14,6 +15,7 @@ interface Animal {
 }
 
 const LivestockRegistration: React.FC = () => {
+    const { addToast } = useToast();
     const [animals, setAnimals] = useState<Animal[]>([]);
     const [showAdd, setShowAdd] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -53,10 +55,10 @@ const LivestockRegistration: React.FC = () => {
             setEditingId(null);
             setFormData({ tag: '', name: '', species: 'dairy', breed: '', dob: '', status: 'active', quantity: 1 });
             loadAnimals();
-            alert(`Animal ${editingId ? 'updated' : 'registered'} successfully!`);
+            addToast(`Animal ${editingId ? 'updated' : 'registered'} successfully`, 'success');
         } catch (err) {
             console.error(err);
-            alert(`Error ${editingId ? 'updating' : 'registering'} animal: ${err}`);
+            addToast(`Error ${editingId ? 'updating' : 'registering'} animal: ${err}`, 'error');
         }
     };
 
@@ -79,8 +81,10 @@ const LivestockRegistration: React.FC = () => {
         try {
             await invoke('delete_livestock', { id });
             loadAnimals();
+            addToast('Animal record deleted', 'info');
         } catch (err) {
             console.error(err);
+            addToast('Error deleting animal record', 'error');
         }
     };
 

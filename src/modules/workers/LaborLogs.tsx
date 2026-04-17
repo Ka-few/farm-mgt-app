@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Clock, MapPin, User, Save } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
+import { useToast } from '../../context/ToastContext';
 import '../../styles/Forms.css';
 
 interface Worker {
@@ -16,6 +17,7 @@ interface Plot {
 }
 
 const LaborLogs: React.FC = () => {
+    const { addToast } = useToast();
     const [workers, setWorkers] = useState<Worker[]>([]);
     const [plots, setPlots] = useState<Plot[]>([]);
     const [workerId, setWorkerId] = useState('');
@@ -55,12 +57,12 @@ const LaborLogs: React.FC = () => {
                 amount
             });
 
-            alert('Labor record saved and added to expenses!');
+            addToast('Labor record saved and added to expenses', 'success');
             setActivity('');
             setWorkerId('');
         } catch (err) {
             console.error(err);
-            alert('Error saving labor record');
+            addToast('Error saving labor record', 'error');
         } finally {
             setLoading(false);
         }

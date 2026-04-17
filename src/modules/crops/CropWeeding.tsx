@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { Shovel, Plus, Trash2, FlaskConical, Edit2 } from 'lucide-react';
+import { useToast } from '../../context/ToastContext';
 import '../../styles/Forms.css';
 
 interface Crop { id: string; name: string; variety: string; }
@@ -16,6 +17,7 @@ interface WeedRecord {
 }
 
 const CropWeeding: React.FC = () => {
+    const { addToast } = useToast();
     const [records, setRecords] = useState<WeedRecord[]>([]);
     const [crops, setCrops] = useState<Crop[]>([]);
     const [cropId, setCropId] = useState('');
@@ -40,7 +42,7 @@ const CropWeeding: React.FC = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!cropId) { alert('Please select a crop.'); return; }
+        if (!cropId) { addToast('Please select a crop', 'warning'); return; }
         setLoading(true);
         try {
             await invoke('add_weeding_record', {
@@ -53,9 +55,9 @@ const CropWeeding: React.FC = () => {
             });
             setCropId(''); setHerbicideName(''); setCost(''); setNotes(''); setMode('manual');
             loadData();
-            alert('Weeding record saved!');
+            addToast('Weeding record saved successfully', 'success');
         } catch (err) {
-            alert('Error saving weeding record: ' + err);
+            addToast('Error saving weeding record: ' + err, 'error');
         } finally {
             setLoading(false);
         }
@@ -63,8 +65,12 @@ const CropWeeding: React.FC = () => {
 
     const handleDelete = async (id: string) => {
         if (!window.confirm('Delete this weeding record?')) return;
-        try { await invoke('delete_weeding_record', { id }); loadData(); }
-        catch (err) { alert('Error: ' + err); }
+        try {
+            await invoke('delete_weeding_record', { id });
+            loadData();
+            addToast('Weeding record deleted', 'info');
+        }
+        catch (err) { addToast('Error deleting weeding record: ' + err, 'error'); }
     };
 
     const handleUpdate = async (e: React.FormEvent) => {
@@ -82,7 +88,8 @@ const CropWeeding: React.FC = () => {
             });
             setEditingRecord(null);
             loadData();
-        } catch (err) { alert('Error updating record: ' + err); }
+            addToast('Weeding record updated', 'success');
+        } catch (err) { addToast('Error updating weeding record: ' + err, 'error'); }
     };
 
     return (

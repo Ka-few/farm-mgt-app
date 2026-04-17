@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Calendar, Plus, Trash2 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
+import { useToast } from '../../context/ToastContext';
 
 interface HealthRecord {
     id: string;
@@ -15,6 +16,7 @@ interface HealthRecord {
 }
 
 const LivestockHealth: React.FC = () => {
+    const { addToast } = useToast();
     const [records, setRecords] = useState<HealthRecord[]>([]);
     const [livestock, setLivestock] = useState<any[]>([]);
     const [showAdd, setShowAdd] = useState(false);
@@ -58,6 +60,7 @@ const LivestockHealth: React.FC = () => {
                 cost: parseFloat(formData.cost.toString()),
                 nextVisit: formData.nextVisit || null
             });
+            addToast('Health record saved successfully', 'success');
             setShowAdd(false);
             setFormData({
                 livestockId: '',
@@ -70,7 +73,7 @@ const LivestockHealth: React.FC = () => {
             loadRecords();
         } catch (err) {
             console.error(err);
-            alert('Error saving health record');
+            addToast('Error saving health record', 'error');
         }
     };
 
@@ -135,7 +138,7 @@ const LivestockHealth: React.FC = () => {
                                     value={formData.description}
                                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                     rows={3}
-                                    style={{ background: 'var(--bg-accent)', border: '1px solid var(--glass-border)', color: 'white', padding: '0.75rem', borderRadius: 'var(--radius-sm)' }}
+                                    style={{ background: 'var(--bg-accent)', border: '1px solid var(--glass-border)', color: 'black', padding: '0.75rem', borderRadius: 'var(--radius-sm)' }}
                                     placeholder="Enter details about the treatment or vaccination..."
                                 />
                             </div>

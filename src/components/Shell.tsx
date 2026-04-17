@@ -22,7 +22,7 @@ interface ShellProps {
 const Shell: React.FC<ShellProps> = ({ children }) => {
     return (
         <div className="shell-container">
-            <aside className="sidebar glass">
+            <aside className="sidebar">
                 <div className="sidebar-header">
                     <div className="logo-icon">🌿</div>
                     <span className="logo-text">JOMUKU FARM</span>
@@ -79,7 +79,7 @@ const Shell: React.FC<ShellProps> = ({ children }) => {
             </aside>
 
             <main className="main-content">
-                <header className="top-bar glass">
+                <header className="top-bar">
                     <div className="top-bar-left">
                         <button className="mobile-menu-btn">
                             <Menu size={20} />

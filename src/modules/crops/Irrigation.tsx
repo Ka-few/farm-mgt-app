@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Save, Trash2, Clock, Zap } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
+import { useToast } from '../../context/ToastContext';
 import '../../styles/Forms.css';
 
 interface Plot {
@@ -22,6 +23,7 @@ interface IrrigationRecord {
 }
 
 const Irrigation: React.FC = () => {
+    const { addToast } = useToast();
     const [records, setRecords] = useState<IrrigationRecord[]>([]);
     const [plots, setPlots] = useState<Plot[]>([]);
     const [showAdd, setShowAdd] = useState(false);
@@ -73,10 +75,10 @@ const Irrigation: React.FC = () => {
             setWater('');
             setCost('');
             loadData();
-            alert('Irrigation record saved!');
+            addToast('Irrigation record saved successfully', 'success');
         } catch (err) {
             console.error(err);
-            alert('Error saving record');
+            addToast('Error saving irrigation record', 'error');
         } finally {
             setLoading(false);
         }
@@ -87,10 +89,10 @@ const Irrigation: React.FC = () => {
         try {
             await invoke('delete_irrigation_record', { id });
             loadData();
-            alert('Record deleted successfully');
+            addToast('Irrigation record deleted', 'info');
         } catch (err) {
             console.error(err);
-            alert('Error deleting record');
+            addToast('Error deleting irrigation record', 'error');
         }
     };
 

@@ -12,11 +12,12 @@
 .sidebar {
     width: 260px;
     height: 100%;
-    border-right: 1px solid var(--glass-border);
+    background-color: var(--sidebar-bg);
     display: flex;
     flex-direction: column;
     padding: 1.5rem;
     z-index: 10;
+    border-right: none;
 }
 
 .sidebar-header {
@@ -34,7 +35,7 @@
     font-size: 1.25rem;
     font-weight: 700;
     letter-spacing: -0.025em;
-    color: var(--text-primary);
+    color: var(--sidebar-text);
 }
 
 .sidebar-nav {
@@ -50,27 +51,30 @@
     gap: 0.75rem;
     padding: 0.75rem 1rem;
     border-radius: var(--radius-sm);
-    color: var(--text-secondary);
+    color: var(--sidebar-text);
+    opacity: 0.7;
     text-decoration: none;
     font-weight: 500;
     transition: var(--transition-fast);
 }
 
 .nav-item:hover {
-    background: rgba(255, 255, 255, 0.05);
-    color: var(--text-primary);
+    background: var(--sidebar-hover);
+    color: white;
+    opacity: 1;
 }
 
 .nav-item.active {
-    background: var(--accent-primary);
+    background: var(--sidebar-active);
     color: white;
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+    opacity: 1;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .sidebar-footer {
     margin-top: auto;
     padding-top: 1rem;
-    border-top: 1px solid var(--glass-border);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* Main Content */
@@ -87,7 +91,8 @@
     align-items: center;
     justify-content: space-between;
     padding: 0 2rem;
-    border-bottom: 1px solid var(--glass-border);
+    background-color: #F8FAF7;
+    border-bottom: 1px solid #D1D8D0;
 }
 
 .top-bar-left {
@@ -119,11 +124,11 @@
     align-items: center;
     gap: 0.5rem;
     font-size: 0.875rem;
-    color: var(--text-secondary);
-    background: rgba(16, 185, 129, 0.1);
+    color: var(--accent-success);
+    background: var(--bg-accent);
     padding: 0.4rem 0.8rem;
     border-radius: 999px;
-    border: 1px solid rgba(16, 185, 129, 0.2);
+    border: 1px solid rgba(31, 111, 67, 0.2);
 }
 
 .status-dot {
@@ -133,8 +138,7 @@
 }
 
 .status-dot.online {
-    background-color: var(--accent-primary);
-    box-shadow: 0 0 8px var(--accent-primary);
+    background-color: var(--accent-soft);
 }
 
 .scroll-content {
