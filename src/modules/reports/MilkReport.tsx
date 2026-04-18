@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { FileText } from 'lucide-react';
 import {
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
     LineChart, Line, PieChart, Pie, Cell, ResponsiveContainer
 } from 'recharts';
 
@@ -118,7 +118,7 @@ const MilkReport: React.FC = () => {
                                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                                     <XAxis dataKey="date" tick={{ fill: 'var(--text-secondary)', fontSize: 10 }} />
                                     <YAxis tick={{ fill: 'var(--text-secondary)', fontSize: 11 }} />
-                                    <Tooltip formatter={(v: number) => `${v} L`} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: 8 }} />
+                                    <Tooltip formatter={(v: any) => `${v} L`} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: 8 }} />
                                     <Line type="monotone" dataKey="qty" name="Liters" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} />
                                 </LineChart>
                             </ResponsiveContainer>
@@ -135,7 +135,7 @@ const MilkReport: React.FC = () => {
                                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                                         <XAxis type="number" tick={{ fill: 'var(--text-secondary)', fontSize: 10 }} />
                                         <YAxis dataKey="tag" type="category" tick={{ fill: 'var(--text-secondary)', fontSize: 10 }} width={60} />
-                                        <Tooltip formatter={(v: number) => `${v} L`} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: 8 }} />
+                                        <Tooltip formatter={(v: any) => `${v} L`} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: 8 }} />
                                         <Bar dataKey="liters" fill="#3b82f6" radius={[0, 4, 4, 0]} />
                                     </BarChart>
                                 </ResponsiveContainer>
@@ -148,10 +148,10 @@ const MilkReport: React.FC = () => {
                             {pieData.length === 0 ? <p style={{ color: 'var(--text-secondary)' }}>No data.</p> : (
                                 <ResponsiveContainer width="100%" height={200}>
                                     <PieChart>
-                                        <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
+                                        <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`} labelLine={false}>
                                             {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                                         </Pie>
-                                        <Tooltip formatter={(v: number) => `${v} L`} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: 8 }} />
+                                        <Tooltip formatter={(v: any) => `${v} L`} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: 8 }} />
                                     </PieChart>
                                 </ResponsiveContainer>
                             )}

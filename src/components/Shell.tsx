@@ -10,7 +10,8 @@ import {
     Settings,
     Menu,
     Clock,
-    FileText
+    FileText,
+    Contact2
 } from 'lucide-react';
 import '../styles/Shell.css';
 import AIChat from './AIChat';
@@ -62,6 +63,11 @@ const Shell: React.FC<ShellProps> = ({ children }) => {
                     <NavLink to="/finance" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
                         <Wallet size={20} />
                         <span>Finance</span>
+                    </NavLink>
+
+                    <NavLink to="/crm" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                        <Contact2 size={20} />
+                        <span>CRM</span>
                     </NavLink>
 
                     <NavLink to="/reports" className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>

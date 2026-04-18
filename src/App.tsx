@@ -1,27 +1,19 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Shell from "./components/Shell";
 import Dashboard from "./modules/farm/Dashboard";
-import { useEffect } from "react";
-import { initDb } from "./core/db";
-import "./styles/theme.css";
-
+import Crops from "./modules/crops/Crops";
+import Livestock from "./modules/livestock/Livestock";
+import Finance from "./modules/finance/Finance";
+import FarmSetup from "./modules/farm/FarmSetup";
 import Workers from "./modules/workers/Workers";
 import LaborLogs from "./modules/workers/LaborLogs";
-import FarmSetup from "./modules/farm/FarmSetup";
-import Crops from "./modules/crops/Crops";
 import Irrigation from "./modules/crops/Irrigation";
-import Finance from "./modules/finance/Finance";
-import Livestock from "./modules/livestock/Livestock";
 import Reports from "./modules/reports/Reports";
+import Customers from "./modules/customers/Customers";
 
 import { ToastProvider } from "./context/ToastContext";
-import ToastContainer from "./components/ToastContainer";
 
 function App() {
-  useEffect(() => {
-    initDb().catch(console.error);
-  }, []);
-
   return (
     <ToastProvider>
       <Router>
@@ -33,13 +25,13 @@ function App() {
             <Route path="/irrigation" element={<Irrigation />} />
             <Route path="/workers" element={<Workers />} />
             <Route path="/finance" element={<Finance />} />
+            <Route path="/crm" element={<Customers />} />
             <Route path="/settings" element={<FarmSetup />} />
             <Route path="/workers/logs" element={<LaborLogs />} />
             <Route path="/reports" element={<Reports />} />
           </Routes>
         </Shell>
       </Router>
-      <ToastContainer />
     </ToastProvider>
   );
 }

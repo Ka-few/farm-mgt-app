@@ -1,5 +1,9 @@
 use crate::db::DbState;
-use crate::models::{Crop, Farm, FinanceRecord, IrrigationRecord, Plot, Worker};
+use crate::models::{
+    Attendance, Budget, BudgetItem, Crop, CropCycle, CropStage, Customer, DailyLog, Farm,
+    FinanceRecord, Input, InputUsage, IrrigationRecord, Order, Payroll, Plot, Task, Worker,
+    YieldRecord,
+};
 use rusqlite::{params, OptionalExtension};
 use tauri::State;
 use uuid::Uuid;
@@ -1233,6 +1237,800 @@ pub fn update_milk_record(
     )
     .map_err(|e| e.to_string())?;
     Ok(())
+}
+
+// --- Advanced Crop Lifecycle Commands ---
+
+#[tauri::command]
+pub fn get_crop_cycles(state: State<DbState>) -> Result<Vec<CropCycle>, String> {
+    get_crop_cycles_logic(&state)
+}
+
+pub fn get_crop_cycles_logic(db: &DbState) -> Result<Vec<CropCycle>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare("
+        SELECT c.id, c.crop_id, cr.name as crop_name, c.plot_id, p.name as plot_name, c.status, c.start_date, c.end_date, c.notes, c.created_at
+        FROM crop_cycles c
+        LEFT JOIN crops cr ON c.crop_id = cr.id
+        LEFT JOIN plots p ON c.plot_id = p.id
+        ORDER BY c.start_date DESC
+    ").map_err(|e| e.to_string())?;
+
+    let iter = stmt
+        .query_map([], |row| {
+            Ok(CropCycle {
+                id: row.get(0)?,
+                crop_id: row.get(1)?,
+                crop_name: row.get(2)?,
+                plot_id: row.get(3)?,
+                plot_name: row.get(4)?,
+                status: row.get(5)?,
+                start_date: row.get(6)?,
+                end_date: row.get(7)?,
+                notes: row.get(8)?,
+                created_at: row.get(9)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut list = Vec::new();
+    for item in iter {
+        list.push(item.map_err(|e| e.to_string())?);
+    }
+    Ok(list)
+}
+
+#[tauri::command]
+pub fn add_crop_cycle(
+    state: State<DbState>,
+    crop_id: String,
+    plot_id: String,
+    start_date: String,
+    notes: Option<String>,
+) -> Result<String, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let id = Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT INTO crop_cycles (id, crop_id, plot_id, start_date, notes) VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![id, crop_id, plot_id, start_date, notes],
+    ).map_err(|e| e.to_string())?;
+    Ok(id)
+}
+
+#[tauri::command]
+pub fn get_crop_stages(state: State<DbState>, cycle_id: String) -> Result<Vec<CropStage>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare("SELECT id, cycle_id, stage, started_at, notes, created_at FROM crop_stages WHERE cycle_id = ?1 ORDER BY started_at ASC")
+        .map_err(|e| e.to_string())?;
+
+    let iter = stmt
+        .query_map(params![cycle_id], |row| {
+            Ok(CropStage {
+                id: row.get(0)?,
+                cycle_id: row.get(1)?,
+                stage: row.get(2)?,
+                started_at: row.get(3)?,
+                notes: row.get(4)?,
+                created_at: row.get(5)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut list = Vec::new();
+    for item in iter {
+        list.push(item.map_err(|e| e.to_string())?);
+    }
+    Ok(list)
+}
+
+#[tauri::command]
+pub fn add_crop_stage(
+    state: State<DbState>,
+    cycle_id: String,
+    stage: String,
+    started_at: String,
+    notes: Option<String>,
+) -> Result<String, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let id = Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT INTO crop_stages (id, cycle_id, stage, started_at, notes) VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![id, cycle_id, stage, started_at, notes],
+    ).map_err(|e| e.to_string())?;
+    Ok(id)
+}
+
+#[tauri::command]
+pub fn get_yield_records(
+    state: State<DbState>,
+    cycle_id: Option<String>,
+) -> Result<Vec<YieldRecord>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let sql = if cycle_id.is_some() {
+        "SELECT id, cycle_id, quantity, unit, quality, date, notes, created_at FROM yield_records WHERE cycle_id = ?1 ORDER BY date DESC"
+    } else {
+        "SELECT id, cycle_id, quantity, unit, quality, date, notes, created_at FROM yield_records ORDER BY date DESC"
+    };
+    let mut stmt = conn.prepare(sql).map_err(|e| e.to_string())?;
+
+    let mut list = Vec::new();
+
+    if let Some(cid) = cycle_id {
+        let iter = stmt
+            .query_map(params![cid], |row| {
+                Ok(YieldRecord {
+                    id: row.get(0)?,
+                    cycle_id: row.get(1)?,
+                    quantity: row.get(2)?,
+                    unit: row.get(3)?,
+                    quality: row.get(4)?,
+                    date: row.get(5)?,
+                    notes: row.get(6)?,
+                    created_at: row.get(7)?,
+                })
+            })
+            .map_err(|e| e.to_string())?;
+        for item in iter {
+            list.push(item.map_err(|e| e.to_string())?);
+        }
+    } else {
+        let iter = stmt
+            .query_map([], |row| {
+                Ok(YieldRecord {
+                    id: row.get(0)?,
+                    cycle_id: row.get(1)?,
+                    quantity: row.get(2)?,
+                    unit: row.get(3)?,
+                    quality: row.get(4)?,
+                    date: row.get(5)?,
+                    notes: row.get(6)?,
+                    created_at: row.get(7)?,
+                })
+            })
+            .map_err(|e| e.to_string())?;
+        for item in iter {
+            list.push(item.map_err(|e| e.to_string())?);
+        }
+    }
+    Ok(list)
+}
+
+#[tauri::command]
+pub fn add_yield_record(
+    state: State<DbState>,
+    cycle_id: String,
+    quantity: f64,
+    unit: String,
+    quality: Option<String>,
+    date: String,
+    notes: Option<String>,
+) -> Result<String, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let id = Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT INTO yield_records (id, cycle_id, quantity, unit, quality, date, notes) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        params![id, cycle_id, quantity, unit, quality, date, notes],
+    ).map_err(|e| e.to_string())?;
+    Ok(id)
+}
+
+// --- Input Usage Commands ---
+
+#[tauri::command]
+pub fn get_inputs(state: State<DbState>) -> Result<Vec<Input>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare("SELECT id, name, category, unit, unit_price, stock_quantity FROM inputs ORDER BY name ASC")
+        .map_err(|e| e.to_string())?;
+
+    let iter = stmt
+        .query_map([], |row| {
+            Ok(Input {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                category: row.get(2)?,
+                unit: row.get(3)?,
+                unit_price: row.get(4)?,
+                stock_quantity: row.get(5)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut list = Vec::new();
+    for item in iter {
+        list.push(item.map_err(|e| e.to_string())?);
+    }
+    Ok(list)
+}
+
+#[tauri::command]
+pub fn add_input(
+    state: State<DbState>,
+    name: String,
+    category: String,
+    unit: String,
+    unit_price: f64,
+    stock_quantity: f64,
+) -> Result<String, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let id = Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT INTO inputs (id, name, category, unit, unit_price, stock_quantity) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        params![id, name, category, unit, unit_price, stock_quantity],
+    ).map_err(|e| e.to_string())?;
+    Ok(id)
+}
+
+#[tauri::command]
+pub fn record_input_usage(
+    state: State<DbState>,
+    cycle_id: String,
+    input_id: String,
+    quantity: f64,
+    cost: f64,
+    date: String,
+    notes: Option<String>,
+) -> Result<String, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let id = Uuid::new_v4().to_string();
+
+    // Atomic usage log + stock update + finance entry
+    conn.execute(
+        "INSERT INTO crop_input_usage (id, cycle_id, input_id, quantity, cost, date, notes) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        params![id, cycle_id, input_id, quantity, cost, date, notes],
+    ).map_err(|e| e.to_string())?;
+
+    conn.execute(
+        "UPDATE inputs SET stock_quantity = stock_quantity - ?1 WHERE id = ?2",
+        params![quantity, input_id],
+    )
+    .map_err(|e| e.to_string())?;
+
+    if cost > 0.0 {
+        let finance_id = Uuid::new_v4().to_string();
+        conn.execute(
+            "INSERT INTO finance_records (id, type, category, amount, date, description, linked_entity_type, linked_entity_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            params![finance_id, "expense", "Crop Inputs", cost, date, format!("Input Usage: {}", input_id), "crop_input_usage", id],
+        ).ok();
+    }
+
+    Ok(id)
+}
+
+#[tauri::command]
+pub fn get_input_usage(
+    state: State<DbState>,
+    cycle_id: Option<String>,
+) -> Result<Vec<InputUsage>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let sql = if cycle_id.is_some() {
+        "SELECT u.id, u.cycle_id, u.input_id, i.name as input_name, u.quantity, u.cost, u.date, u.notes FROM crop_input_usage u JOIN inputs i ON u.input_id = i.id WHERE u.cycle_id = ?1 ORDER BY u.date DESC"
+    } else {
+        "SELECT u.id, u.cycle_id, u.input_id, i.name as input_name, u.quantity, u.cost, u.date, u.notes FROM crop_input_usage u JOIN inputs i ON u.input_id = i.id ORDER BY u.date DESC"
+    };
+    let mut stmt = conn.prepare(sql).map_err(|e| e.to_string())?;
+
+    let mut list = Vec::new();
+
+    if let Some(cid) = cycle_id {
+        let iter = stmt
+            .query_map(params![cid], |row| {
+                Ok(InputUsage {
+                    id: row.get(0)?,
+                    cycle_id: row.get(1)?,
+                    input_id: row.get(2)?,
+                    input_name: row.get(3)?,
+                    quantity: row.get(4)?,
+                    cost: row.get(5)?,
+                    date: row.get(6)?,
+                    notes: row.get(7)?,
+                })
+            })
+            .map_err(|e| e.to_string())?;
+        for item in iter {
+            list.push(item.map_err(|e| e.to_string())?);
+        }
+    } else {
+        let iter = stmt
+            .query_map([], |row| {
+                Ok(InputUsage {
+                    id: row.get(0)?,
+                    cycle_id: row.get(1)?,
+                    input_id: row.get(2)?,
+                    input_name: row.get(3)?,
+                    quantity: row.get(4)?,
+                    cost: row.get(5)?,
+                    date: row.get(6)?,
+                    notes: row.get(7)?,
+                })
+            })
+            .map_err(|e| e.to_string())?;
+        for item in iter {
+            list.push(item.map_err(|e| e.to_string())?);
+        }
+    }
+    Ok(list)
+}
+
+// --- Operational Tracking Commands ---
+
+#[tauri::command]
+pub fn get_tasks(state: State<DbState>) -> Result<Vec<Task>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare("
+        SELECT t.id, t.title, t.description, t.priority, t.assigned_to, w.name as worker_name, t.due_date, t.status
+        FROM tasks t
+        LEFT JOIN workers w ON t.assigned_to = w.id
+        ORDER BY t.due_date ASC
+    ").map_err(|e| e.to_string())?;
+
+    let iter = stmt
+        .query_map([], |row| {
+            Ok(Task {
+                id: row.get(0)?,
+                title: row.get(1)?,
+                description: row.get(2)?,
+                priority: row.get(3)?,
+                assigned_to: row.get(4)?,
+                worker_name: row.get(5)?,
+                due_date: row.get(6)?,
+                status: row.get(7)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut list = Vec::new();
+    for item in iter {
+        list.push(item.map_err(|e| e.to_string())?);
+    }
+    Ok(list)
+}
+
+#[tauri::command]
+pub fn add_task(
+    state: State<DbState>,
+    title: String,
+    description: Option<String>,
+    priority: String,
+    assigned_to: Option<String>,
+    due_date: Option<String>,
+) -> Result<String, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let id = Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT INTO tasks (id, title, description, priority, assigned_to, due_date) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        params![id, title, description, priority, assigned_to, due_date],
+    ).map_err(|e| e.to_string())?;
+    Ok(id)
+}
+
+#[tauri::command]
+pub fn update_task(state: State<DbState>, id: String, status: String) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "UPDATE tasks SET status = ?1 WHERE id = ?2",
+        params![status, id],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_daily_logs(
+    state: State<DbState>,
+    date: Option<String>,
+) -> Result<Vec<DailyLog>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let sql = if date.is_some() {
+        "SELECT l.id, l.cycle_id, l.task_id, l.worker_id, w.name as worker_name, l.activity, l.time_spent_hours, l.date, l.notes 
+         FROM daily_logs l LEFT JOIN workers w ON l.worker_id = w.id WHERE l.date = ?1 ORDER BY l.created_at DESC"
+    } else {
+        "SELECT l.id, l.cycle_id, l.task_id, l.worker_id, w.name as worker_name, l.activity, l.time_spent_hours, l.date, l.notes 
+         FROM daily_logs l LEFT JOIN workers w ON l.worker_id = w.id ORDER BY l.date DESC LIMIT 100"
+    };
+    let mut stmt = conn.prepare(sql).map_err(|e| e.to_string())?;
+
+    let mut list = Vec::new();
+
+    if let Some(d) = date {
+        let iter = stmt
+            .query_map(params![d], |row| {
+                Ok(DailyLog {
+                    id: row.get(0)?,
+                    cycle_id: row.get(1)?,
+                    task_id: row.get(2)?,
+                    worker_id: row.get(3)?,
+                    worker_name: row.get(4)?,
+                    activity: row.get(5)?,
+                    time_spent_hours: row.get(6)?,
+                    date: row.get(7)?,
+                    notes: row.get(8)?,
+                })
+            })
+            .map_err(|e| e.to_string())?;
+        for item in iter {
+            list.push(item.map_err(|e| e.to_string())?);
+        }
+    } else {
+        let iter = stmt
+            .query_map([], |row| {
+                Ok(DailyLog {
+                    id: row.get(0)?,
+                    cycle_id: row.get(1)?,
+                    task_id: row.get(2)?,
+                    worker_id: row.get(3)?,
+                    worker_name: row.get(4)?,
+                    activity: row.get(5)?,
+                    time_spent_hours: row.get(6)?,
+                    date: row.get(7)?,
+                    notes: row.get(8)?,
+                })
+            })
+            .map_err(|e| e.to_string())?;
+        for item in iter {
+            list.push(item.map_err(|e| e.to_string())?);
+        }
+    }
+    Ok(list)
+}
+
+#[tauri::command]
+pub fn add_daily_log(
+    state: State<DbState>,
+    cycle_id: Option<String>,
+    task_id: Option<String>,
+    worker_id: Option<String>,
+    activity: String,
+    time_spent: Option<f64>,
+    date: String,
+    notes: Option<String>,
+) -> Result<String, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let id = Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT INTO daily_logs (id, cycle_id, task_id, worker_id, activity, time_spent_hours, date, notes) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        params![id, cycle_id, task_id, worker_id, activity, time_spent, date, notes],
+    ).map_err(|e| e.to_string())?;
+    Ok(id)
+}
+
+// --- Worker Attendance & ERP Commands ---
+
+#[tauri::command]
+pub fn get_attendance(state: State<DbState>, date: String) -> Result<Vec<Attendance>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare(
+            "
+        SELECT a.id, a.worker_id, w.name as worker_name, a.check_in, a.check_out, a.status, a.date
+        FROM attendance a
+        JOIN workers w ON a.worker_id = w.id
+        WHERE a.date = ?1
+    ",
+        )
+        .map_err(|e| e.to_string())?;
+
+    let iter = stmt
+        .query_map(params![date], |row| {
+            Ok(Attendance {
+                id: row.get(0)?,
+                worker_id: row.get(1)?,
+                worker_name: row.get(2)?,
+                check_in: row.get(3)?,
+                check_out: row.get(4)?,
+                status: row.get(5)?,
+                date: row.get(6)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut list = Vec::new();
+    for item in iter {
+        list.push(item.map_err(|e| e.to_string())?);
+    }
+    Ok(list)
+}
+
+#[tauri::command]
+pub fn record_attendance(
+    state: State<DbState>,
+    worker_id: String,
+    status: String,
+    date: String,
+) -> Result<String, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let id = Uuid::new_v4().to_string();
+    let check_in = format!("{} 08:00:00", date);
+    conn.execute(
+        "INSERT INTO attendance (id, worker_id, status, date, check_in) VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![id, worker_id, status, date, check_in],
+    ).map_err(|e| e.to_string())?;
+    Ok(id)
+}
+
+#[tauri::command]
+pub fn get_payroll(state: State<DbState>) -> Result<Vec<Payroll>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare("
+        SELECT p.id, p.worker_id, w.name as worker_name, p.period_start, p.period_end, p.base_pay, p.bonus, p.deductions, p.total_pay, p.status
+        FROM payroll p
+        JOIN workers w ON p.worker_id = w.id
+        ORDER BY p.period_end DESC
+    ").map_err(|e| e.to_string())?;
+
+    let iter = stmt
+        .query_map([], |row| {
+            Ok(Payroll {
+                id: row.get(0)?,
+                worker_id: row.get(1)?,
+                worker_name: row.get(2)?,
+                period_start: row.get(3)?,
+                period_end: row.get(4)?,
+                base_pay: row.get(5)?,
+                bonus: row.get(6)?,
+                deductions: row.get(7)?,
+                total_pay: row.get(8)?,
+                status: row.get(9)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut list = Vec::new();
+    for item in iter {
+        list.push(item.map_err(|e| e.to_string())?);
+    }
+    Ok(list)
+}
+
+#[tauri::command]
+pub fn generate_payroll(
+    state: State<DbState>,
+    worker_id: String,
+    period_start: String,
+    period_end: String,
+    bonus: f64,
+    deductions: f64,
+) -> Result<String, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+
+    // Calculate base pay from daily_rate * attendance days
+    let mut stmt = conn
+        .prepare("SELECT daily_rate FROM workers WHERE id = ?1")
+        .map_err(|e| e.to_string())?;
+    let daily_rate: f64 = stmt
+        .query_row(params![worker_id], |row| row.get(0))
+        .map_err(|e| e.to_string())?;
+
+    let mut stmt = conn.prepare("SELECT COUNT(*) FROM attendance WHERE worker_id = ?1 AND date >= ?2 AND date <= ?3 AND status = 'present'")
+        .map_err(|e| e.to_string())?;
+    let days_present: i64 = stmt
+        .query_row(params![worker_id, period_start, period_end], |row| {
+            row.get(0)
+        })
+        .map_err(|e| e.to_string())?;
+
+    let base_pay = (days_present as f64) * daily_rate;
+    let total_pay = base_pay + bonus - deductions;
+    let id = Uuid::new_v4().to_string();
+
+    conn.execute(
+        "INSERT INTO payroll (id, worker_id, period_start, period_end, base_pay, bonus, deductions, total_pay) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        params![id, worker_id, period_start, period_end, base_pay, bonus, deductions, total_pay],
+    ).map_err(|e| e.to_string())?;
+
+    // Add financial expense record
+    let finance_id = Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT INTO finance_records (id, type, category, amount, date, description, linked_entity_type, linked_entity_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        params![finance_id, "expense", "Payroll", total_pay, period_end, format!("Payroll for {} ({} - {})", worker_id, period_start, period_end), "payroll", id],
+    ).ok();
+
+    Ok(id)
+}
+
+// --- Budget Management Commands ---
+
+#[tauri::command]
+pub fn get_budgets(state: State<DbState>) -> Result<Vec<Budget>, String> {
+    get_budgets_logic(&state)
+}
+
+pub fn get_budgets_logic(db: &DbState) -> Result<Vec<Budget>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare("SELECT id, name, start_date, end_date, total_amount, status FROM budgets ORDER BY start_date DESC")
+        .map_err(|e| e.to_string())?;
+
+    let iter = stmt
+        .query_map([], |row| {
+            Ok(Budget {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                start_date: row.get(2)?,
+                end_date: row.get(3)?,
+                total_amount: row.get(4)?,
+                status: row.get(5)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut list = Vec::new();
+    for item in iter {
+        list.push(item.map_err(|e| e.to_string())?);
+    }
+    Ok(list)
+}
+
+#[tauri::command]
+pub fn add_budget(
+    state: State<DbState>,
+    name: String,
+    start_date: String,
+    end_date: String,
+    total_amount: f64,
+) -> Result<String, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let id = Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT INTO budgets (id, name, start_date, end_date, total_amount) VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![id, name, start_date, end_date, total_amount],
+    ).map_err(|e| e.to_string())?;
+    Ok(id)
+}
+
+#[tauri::command]
+pub fn get_budget_items(
+    state: State<DbState>,
+    budget_id: String,
+) -> Result<Vec<BudgetItem>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare("SELECT id, budget_id, category, allocated_amount, spent_amount, notes FROM budget_items WHERE budget_id = ?1")
+        .map_err(|e| e.to_string())?;
+
+    let iter = stmt
+        .query_map(params![budget_id], |row| {
+            Ok(BudgetItem {
+                id: row.get(0)?,
+                budget_id: row.get(1)?,
+                category: row.get(2)?,
+                allocated_amount: row.get(3)?,
+                spent_amount: row.get(4)?,
+                notes: row.get(5)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut list = Vec::new();
+    for item in iter {
+        list.push(item.map_err(|e| e.to_string())?);
+    }
+    Ok(list)
+}
+
+#[tauri::command]
+pub fn add_budget_item(
+    state: State<DbState>,
+    budget_id: String,
+    category: String,
+    allocated_amount: f64,
+    notes: Option<String>,
+) -> Result<String, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let id = Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT INTO budget_items (id, budget_id, category, allocated_amount, notes) VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![id, budget_id, category, allocated_amount, notes],
+    ).map_err(|e| e.to_string())?;
+    Ok(id)
+}
+
+// --- Customer CRM Commands ---
+
+#[tauri::command]
+pub fn get_customers(state: State<DbState>) -> Result<Vec<Customer>, String> {
+    get_customers_logic(&state)
+}
+
+pub fn get_customers_logic(db: &DbState) -> Result<Vec<Customer>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare("SELECT id, name, phone, email, address, notes FROM customers ORDER BY name ASC")
+        .map_err(|e| e.to_string())?;
+
+    let iter = stmt
+        .query_map([], |row| {
+            Ok(Customer {
+                id: row.get(0)?,
+                name: row.get(1)?,
+                phone: row.get(2)?,
+                email: row.get(3)?,
+                address: row.get(4)?,
+                notes: row.get(5)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut list = Vec::new();
+    for item in iter {
+        list.push(item.map_err(|e| e.to_string())?);
+    }
+    Ok(list)
+}
+
+#[tauri::command]
+pub fn add_customer(
+    state: State<DbState>,
+    name: String,
+    phone: Option<String>,
+    email: Option<String>,
+    address: Option<String>,
+    notes: Option<String>,
+) -> Result<String, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let id = Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT INTO customers (id, name, phone, email, address, notes) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        params![id, name, phone, email, address, notes],
+    ).map_err(|e| e.to_string())?;
+    Ok(id)
+}
+
+#[tauri::command]
+pub fn get_orders(state: State<DbState>) -> Result<Vec<Order>, String> {
+    get_orders_logic(&state)
+}
+
+pub fn get_orders_logic(db: &DbState) -> Result<Vec<Order>, String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+    // Note: AI tool usage doesn't need specific customer filter usually,
+    // but if needed we can add a wrapper.
+    let sql = "SELECT o.id, o.customer_id, c.name as customer_name, o.order_date, o.total_amount, o.status, o.payment_status 
+         FROM orders o JOIN customers c ON o.customer_id = c.id ORDER BY o.order_date DESC";
+
+    let mut stmt = conn.prepare(sql).map_err(|e| e.to_string())?;
+
+    let iter = stmt
+        .query_map([], |row| {
+            Ok(Order {
+                id: row.get(0)?,
+                customer_id: row.get(1)?,
+                customer_name: row.get(2)?,
+                order_date: row.get(3)?,
+                total_amount: row.get(4)?,
+                status: row.get(5)?,
+                payment_status: row.get(6)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut list = Vec::new();
+    for item in iter {
+        list.push(item.map_err(|e| e.to_string())?);
+    }
+    Ok(list)
+}
+
+#[tauri::command]
+pub fn add_order(
+    state: State<DbState>,
+    customer_id: String,
+    order_date: String,
+    total_amount: f64,
+) -> Result<String, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let id = Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT INTO orders (id, customer_id, order_date, total_amount) VALUES (?1, ?2, ?3, ?4)",
+        params![id, customer_id, order_date, total_amount],
+    )
+    .map_err(|e| e.to_string())?;
+
+    // Add financial income record
+    let finance_id = Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT INTO finance_records (id, type, category, amount, date, description, linked_entity_type, linked_entity_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        params![finance_id, "income", "Sales", total_amount, order_date, format!("Order from customer: {}", customer_id), "orders", id],
+    ).ok();
+
+    Ok(id)
 }
 
 #[tauri::command]

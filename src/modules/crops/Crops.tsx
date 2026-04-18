@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { Sprout, Shovel, Wheat } from 'lucide-react';
+import { Sprout, Shovel, Wheat, Activity, Package } from 'lucide-react';
 import CropPlanting from './CropPlanting';
 import CropWeeding from './CropWeeding';
 import CropHarvesting from './CropHarvesting';
+import CropLifecycle from './CropLifecycle';
+import InputUsage from './InputUsage';
 
 const Crops: React.FC = () => {
     const [activeTab, setActiveTab] = useState('planting');
@@ -10,7 +12,9 @@ const Crops: React.FC = () => {
     const tabs = [
         { id: 'planting', label: 'Planting', icon: <Sprout size={18} /> },
         { id: 'weeding', label: 'Weeding', icon: <Shovel size={18} /> },
-        { id: 'harvesting', label: 'Harvesting', icon: <Wheat size={18} /> }
+        { id: 'harvesting', label: 'Harvesting', icon: <Wheat size={18} /> },
+        { id: 'lifecycle', label: 'Lifecycle', icon: <Activity size={18} /> },
+        { id: 'inputs', label: 'Inputs', icon: <Package size={18} /> }
     ];
 
     return (
@@ -45,6 +49,8 @@ const Crops: React.FC = () => {
                 {activeTab === 'planting' && <CropPlanting />}
                 {activeTab === 'weeding' && <CropWeeding />}
                 {activeTab === 'harvesting' && <CropHarvesting />}
+                {activeTab === 'lifecycle' && <CropLifecycle />}
+                {activeTab === 'inputs' && <InputUsage />}
             </div>
         </div>
     );

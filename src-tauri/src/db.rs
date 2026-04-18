@@ -175,6 +175,175 @@ pub fn establish_connection(app: &AppHandle) -> Connection {
             payload TEXT,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         );
+
+        /* Advanced Crop Lifecycle */
+        CREATE TABLE IF NOT EXISTS crop_cycles (
+            id TEXT PRIMARY KEY,
+            crop_id TEXT NOT NULL,
+            plot_id TEXT NOT NULL,
+            status TEXT CHECK(status IN ('active', 'completed', 'failed')) DEFAULT 'active',
+            start_date DATE NOT NULL,
+            end_date DATE,
+            notes TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(crop_id) REFERENCES crops(id),
+            FOREIGN KEY(plot_id) REFERENCES plots(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS crop_stages (
+            id TEXT PRIMARY KEY,
+            cycle_id TEXT NOT NULL,
+            stage TEXT NOT NULL, -- 'planting', 'germination', 'vegetative', 'flowering', 'harvest'
+            started_at DATE NOT NULL,
+            notes TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(cycle_id) REFERENCES crop_cycles(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS yield_records (
+            id TEXT PRIMARY KEY,
+            cycle_id TEXT NOT NULL,
+            quantity REAL NOT NULL,
+            unit TEXT NOT NULL,
+            quality TEXT,
+            date DATE NOT NULL,
+            notes TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(cycle_id) REFERENCES crop_cycles(id)
+        );
+
+        /* Input Usage Tracking */
+        CREATE TABLE IF NOT EXISTS inputs (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            category TEXT NOT NULL, -- 'seeds', 'fertilizer', 'pesticide', 'water'
+            unit TEXT NOT NULL,
+            unit_price REAL DEFAULT 0,
+            stock_quantity REAL DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS crop_input_usage (
+            id TEXT PRIMARY KEY,
+            cycle_id TEXT NOT NULL,
+            input_id TEXT NOT NULL,
+            quantity REAL NOT NULL,
+            cost REAL NOT NULL,
+            date DATE NOT NULL,
+            notes TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(cycle_id) REFERENCES crop_cycles(id),
+            FOREIGN KEY(input_id) REFERENCES inputs(id)
+        );
+
+        /* Daily Operational Tracking */
+        CREATE TABLE IF NOT EXISTS tasks (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            description TEXT,
+            priority TEXT DEFAULT 'medium',
+            assigned_to TEXT,
+            due_date DATE,
+            status TEXT DEFAULT 'pending', -- 'pending', 'in-progress', 'completed'
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(assigned_to) REFERENCES workers(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS daily_logs (
+            id TEXT PRIMARY KEY,
+            cycle_id TEXT,
+            task_id TEXT,
+            worker_id TEXT,
+            activity TEXT NOT NULL,
+            time_spent_hours REAL,
+            date DATE NOT NULL,
+            notes TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(cycle_id) REFERENCES crop_cycles(id),
+            FOREIGN KEY(task_id) REFERENCES tasks(id),
+            FOREIGN KEY(worker_id) REFERENCES workers(id)
+        );
+
+        /* Worker Attendance & ERP */
+        CREATE TABLE IF NOT EXISTS attendance (
+            id TEXT PRIMARY KEY,
+            worker_id TEXT NOT NULL,
+            check_in DATETIME NOT NULL,
+            check_out DATETIME,
+            status TEXT DEFAULT 'present',
+            date DATE NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(worker_id) REFERENCES workers(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS payroll (
+            id TEXT PRIMARY KEY,
+            worker_id TEXT NOT NULL,
+            period_start DATE NOT NULL,
+            period_end DATE NOT NULL,
+            base_pay REAL NOT NULL,
+            bonus REAL DEFAULT 0,
+            deductions REAL DEFAULT 0,
+            total_pay REAL NOT NULL,
+            status TEXT DEFAULT 'pending', -- 'pending', 'paid'
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(worker_id) REFERENCES workers(id)
+        );
+
+        /* Budget Management */
+        CREATE TABLE IF NOT EXISTS budgets (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            start_date DATE NOT NULL,
+            end_date DATE NOT NULL,
+            total_amount REAL NOT NULL,
+            status TEXT DEFAULT 'active',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS budget_items (
+            id TEXT PRIMARY KEY,
+            budget_id TEXT NOT NULL,
+            category TEXT NOT NULL,
+            allocated_amount REAL NOT NULL,
+            spent_amount REAL DEFAULT 0,
+            notes TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(budget_id) REFERENCES budgets(id)
+        );
+
+        /* Customer CRM */
+        CREATE TABLE IF NOT EXISTS customers (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            phone TEXT,
+            email TEXT,
+            address TEXT,
+            notes TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS orders (
+            id TEXT PRIMARY KEY,
+            customer_id TEXT NOT NULL,
+            order_date DATE NOT NULL,
+            total_amount REAL NOT NULL,
+            status TEXT DEFAULT 'pending', -- 'pending', 'confirmed', 'shipped', 'cancelled'
+            payment_status TEXT DEFAULT 'unpaid',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(customer_id) REFERENCES customers(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS order_items (
+            id TEXT PRIMARY KEY,
+            order_id TEXT NOT NULL,
+            product_name TEXT NOT NULL,
+            quantity REAL NOT NULL,
+            unit_price REAL NOT NULL,
+            total_price REAL NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(order_id) REFERENCES orders(id)
+        );
     ").expect("Failed to initialize database schema");
 
     // Add session columns if they don't exist (handle legacy databases)

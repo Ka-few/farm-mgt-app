@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { UserPlus, Edit2, Trash2 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
+import { UserPlus, Edit2, Trash2, Users, CalendarCheck, Banknote } from 'lucide-react';
+import { useToast } from '../../context/ToastContext';
+import Attendance from './Attendance';
+import Payroll from './Payroll';
 import '../../styles/Forms.css';
 
 interface Worker {
@@ -11,10 +14,9 @@ interface Worker {
     is_active: number;
 }
 
-import { useToast } from '../../context/ToastContext';
-
 const Workers: React.FC = () => {
     const { addToast } = useToast();
+    const [activeTab, setActiveTab] = useState('directory');
     const [workers, setWorkers] = useState<Worker[]>([]);
     const [showAdd, setShowAdd] = useState(false);
     const [name, setName] = useState('');
@@ -97,83 +99,117 @@ const Workers: React.FC = () => {
         <div className="workers-page">
             <div className="welcome-header">
                 <div>
-                    <h2>Team Management</h2>
-                    <p className="subtitle">Manage your farm workers and labor rates.</p>
+                    <h2>Worker ERP</h2>
+                    <p className="subtitle">Manage team profiles, track attendance, and process payroll.</p>
                 </div>
-                <button className="button-primary" onClick={() => setShowAdd(!showAdd)}>
-                    <UserPlus size={18} />
-                    <span>{showAdd ? 'Cancel' : 'Add Worker'}</span>
+            </div>
+
+            <div className="tabs-container glass" style={{ display: 'flex', gap: '1rem', padding: '0.5rem', marginBottom: '2rem', borderRadius: 'var(--radius-md)', width: 'fit-content' }}>
+                <button
+                    className={`tab-item ${activeTab === 'directory' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('directory')}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.2rem', borderRadius: 'var(--radius-sm)', border: 'none', background: activeTab === 'directory' ? 'var(--accent-primary)' : 'transparent', color: activeTab === 'directory' ? 'white' : 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer' }}
+                >
+                    <Users size={18} /> Directory
+                </button>
+                <button
+                    className={`tab-item ${activeTab === 'attendance' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('attendance')}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.2rem', borderRadius: 'var(--radius-sm)', border: 'none', background: activeTab === 'attendance' ? 'var(--accent-primary)' : 'transparent', color: activeTab === 'attendance' ? 'white' : 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer' }}
+                >
+                    <CalendarCheck size={18} /> Attendance
+                </button>
+                <button
+                    className={`tab-item ${activeTab === 'payroll' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('payroll')}
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.2rem', borderRadius: 'var(--radius-sm)', border: 'none', background: activeTab === 'payroll' ? 'var(--accent-primary)' : 'transparent', color: activeTab === 'payroll' ? 'white' : 'var(--text-secondary)', fontWeight: 600, cursor: 'pointer' }}
+                >
+                    <Banknote size={18} /> Payroll
                 </button>
             </div>
 
-            {showAdd && (
-                <div className="form-container glass" style={{ maxWidth: '100%', marginBottom: '2rem' }}>
-                    <h3>New Worker Profile</h3>
-                    <form onSubmit={handleAddWorker} className="entry-form" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                        <div className="input-group">
-                            <label>Full Name</label>
-                            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. John Doe" required />
+            {activeTab === 'directory' && (
+                <>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+                        <button className="button-primary" onClick={() => setShowAdd(!showAdd)}>
+                            <UserPlus size={18} />
+                            <span>{showAdd ? 'Cancel' : 'Add Worker'}</span>
+                        </button>
+                    </div>
+
+                    {showAdd && (
+                        <div className="form-container glass" style={{ maxWidth: '100%', marginBottom: '2rem' }}>
+                            <h3>New Worker Profile</h3>
+                            <form onSubmit={handleAddWorker} className="entry-form" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                                <div className="input-group">
+                                    <label>Full Name</label>
+                                    <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. John Doe" required />
+                                </div>
+                                <div className="input-group">
+                                    <label>Role / Specialty</label>
+                                    <input value={role} onChange={(e) => setRole(e.target.value)} placeholder="e.g. Milker, Harvester" required />
+                                </div>
+                                <div className="input-group">
+                                    <label>Daily Rate (KShs)</label>
+                                    <input type="number" value={rate} onChange={(e) => setRate(e.target.value)} placeholder="0.00" required />
+                                </div>
+                                <div className="form-actions" style={{ gridColumn: '1 / -1' }}>
+                                    <button type="submit" className="button-primary">Save Profile</button>
+                                </div>
+                            </form>
                         </div>
-                        <div className="input-group">
-                            <label>Role / Specialty</label>
-                            <input value={role} onChange={(e) => setRole(e.target.value)} placeholder="e.g. Milker, Harvester" required />
-                        </div>
-                        <div className="input-group">
-                            <label>Daily Rate (KShs)</label>
-                            <input type="number" value={rate} onChange={(e) => setRate(e.target.value)} placeholder="0.00" required />
-                        </div>
-                        <div className="form-actions" style={{ gridColumn: '1 / -1' }}>
-                            <button type="submit" className="button-primary">Save Profile</button>
-                        </div>
-                    </form>
-                </div>
+                    )}
+
+                    <div className="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Role</th>
+                                    <th>Daily Rate</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {workers.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={5} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
+                                            No workers found. Add your first team member to get started.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    workers.map((worker) => (
+                                        <tr key={worker.id}>
+                                            <td style={{ fontWeight: 600 }}>{worker.name}</td>
+                                            <td>{worker.role}</td>
+                                            <td>KShs {worker.daily_rate.toFixed(2)}</td>
+                                            <td>
+                                                <span className={`badge ${worker.is_active ? 'badge-success' : 'badge-warning'}`}>
+                                                    {worker.is_active ? 'Active' : 'Inactive'}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                    <button className="btn-icon" title="Edit" onClick={() => setEditingWorker(worker)}><Edit2 size={16} /></button>
+                                                    <button className="btn-icon danger" title="Archive" onClick={() => handleDeleteWorker(worker.id)}><Trash2 size={16} /></button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </>
             )}
 
-            <div className="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Role</th>
-                            <th>Daily Rate</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {workers.length === 0 ? (
-                            <tr>
-                                <td colSpan={5} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
-                                    No workers found. Add your first team member to get started.
-                                </td>
-                            </tr>
-                        ) : (
-                            workers.map((worker) => (
-                                <tr key={worker.id}>
-                                    <td style={{ fontWeight: 600 }}>{worker.name}</td>
-                                    <td>{worker.role}</td>
-                                    <td>KShs {worker.daily_rate.toFixed(2)}</td>
-                                    <td>
-                                        <span className={`badge ${worker.is_active ? 'badge-success' : 'badge-warning'}`}>
-                                            {worker.is_active ? 'Active' : 'Inactive'}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                            <button className="btn-icon" title="Edit" onClick={() => setEditingWorker(worker)}><Edit2 size={16} /></button>
-                                            <button className="btn-icon danger" title="Archive" onClick={() => handleDeleteWorker(worker.id)}><Trash2 size={16} /></button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-            </div>
-            {/* Edit Modal / Form Overlay */}
+            {activeTab === 'attendance' && <Attendance />}
+            {activeTab === 'payroll' && <Payroll />}
+
             {editingWorker && (
-                <div className="modal-overlay">
-                    <div className="form-container glass" style={{ maxWidth: '400px', margin: 'auto' }}>
+                <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+                    <div className="form-container glass" style={{ maxWidth: '400px', width: '100%', padding: '2rem' }}>
                         <h3>Edit Worker</h3>
                         <form onSubmit={handleUpdateWorker} className="entry-form">
                             <div className="input-group">
@@ -201,9 +237,9 @@ const Workers: React.FC = () => {
                                     required
                                 />
                             </div>
-                            <div className="form-actions">
-                                <button type="submit" className="button-primary">Update</button>
-                                <button type="button" onClick={() => setEditingWorker(null)} className="button-secondary">Cancel</button>
+                            <div className="form-actions" style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+                                <button type="submit" className="button-primary" style={{ flex: 1 }}>Update</button>
+                                <button type="button" onClick={() => setEditingWorker(null)} className="button-secondary" style={{ flex: 1 }}>Cancel</button>
                             </div>
                         </form>
                     </div>

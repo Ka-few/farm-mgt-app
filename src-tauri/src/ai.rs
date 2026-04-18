@@ -32,6 +32,10 @@ impl OllamaAgent {
             get_livestock_info(),
             get_workers_info(),
             add_finance_record_info(),
+            get_crop_cycles_info(),
+            get_orders_info(),
+            get_budgets_info(),
+            get_customers_info(),
         ];
 
         let request =
@@ -123,6 +127,57 @@ fn get_workers_info() -> ToolInfo {
     }
 }
 
+fn get_crop_cycles_info() -> ToolInfo {
+    ToolInfo {
+        tool_type: ToolType::Function,
+        function: ToolFunctionInfo {
+            name: "get_crop_cycles".to_string(),
+            description: "Get details of crop planting cycles, stages, and health status."
+                .to_string(),
+            parameters: serde_json::from_value(json!({ "type": "object", "properties": {} }))
+                .unwrap(),
+        },
+    }
+}
+
+fn get_orders_info() -> ToolInfo {
+    ToolInfo {
+        tool_type: ToolType::Function,
+        function: ToolFunctionInfo {
+            name: "get_orders".to_string(),
+            description: "List all customer sales orders and their statuses.".to_string(),
+            parameters: serde_json::from_value(json!({ "type": "object", "properties": {} }))
+                .unwrap(),
+        },
+    }
+}
+
+fn get_budgets_info() -> ToolInfo {
+    ToolInfo {
+        tool_type: ToolType::Function,
+        function: ToolFunctionInfo {
+            name: "get_budgets".to_string(),
+            description:
+                "Get financial budgets, including allocated vs spent amounts per category."
+                    .to_string(),
+            parameters: serde_json::from_value(json!({ "type": "object", "properties": {} }))
+                .unwrap(),
+        },
+    }
+}
+
+fn get_customers_info() -> ToolInfo {
+    ToolInfo {
+        tool_type: ToolType::Function,
+        function: ToolFunctionInfo {
+            name: "get_customers".to_string(),
+            description: "List all farm customers and contact details.".to_string(),
+            parameters: serde_json::from_value(json!({ "type": "object", "properties": {} }))
+                .unwrap(),
+        },
+    }
+}
+
 fn add_finance_record_info() -> ToolInfo {
     ToolInfo {
         tool_type: ToolType::Function,
@@ -165,6 +220,22 @@ async fn execute_tool(
         "get_workers" => {
             let workers = commands::get_workers_logic(state)?;
             Ok(json!(workers))
+        }
+        "get_crop_cycles" => {
+            let cycles = commands::get_crop_cycles_logic(state)?;
+            Ok(json!(cycles))
+        }
+        "get_orders" => {
+            let orders = commands::get_orders_logic(state)?;
+            Ok(json!(orders))
+        }
+        "get_budgets" => {
+            let budgets = commands::get_budgets_logic(state)?;
+            Ok(json!(budgets))
+        }
+        "get_customers" => {
+            let customers = commands::get_customers_logic(state)?;
+            Ok(json!(customers))
         }
         "add_finance_record" => {
             let r_type = args["record_type"]

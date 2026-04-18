@@ -136,3 +136,158 @@ pub struct IrrigationRecord {
     pub cost: Option<f64>,
     pub created_at: Option<String>,
 }
+
+/* Advanced Crop Lifecycle */
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CropCycle {
+    pub id: String,
+    pub crop_id: String,
+    pub crop_name: Option<String>,
+    pub plot_id: String,
+    pub plot_name: Option<String>,
+    pub status: String,
+    pub start_date: String,
+    pub end_date: Option<String>,
+    pub notes: Option<String>,
+    pub created_at: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CropStage {
+    pub id: String,
+    pub cycle_id: String,
+    pub stage: String,
+    pub started_at: String,
+    pub notes: Option<String>,
+    pub created_at: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct YieldRecord {
+    pub id: String,
+    pub cycle_id: String,
+    pub quantity: f64,
+    pub unit: String,
+    pub quality: Option<String>,
+    pub date: String,
+    pub notes: Option<String>,
+    pub created_at: Option<String>,
+}
+
+/* Input Usage */
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Input {
+    pub id: String,
+    pub name: String,
+    pub category: String,
+    pub unit: String,
+    pub unit_price: f64,
+    pub stock_quantity: f64,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct InputUsage {
+    pub id: String,
+    pub cycle_id: String,
+    pub input_id: String,
+    pub input_name: Option<String>,
+    pub quantity: f64,
+    pub cost: f64,
+    pub date: String,
+    pub notes: Option<String>,
+}
+
+/* Operational Tracking */
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Task {
+    pub id: String,
+    pub title: String,
+    pub description: Option<String>,
+    pub priority: String,
+    pub assigned_to: Option<String>,
+    pub worker_name: Option<String>,
+    pub due_date: Option<String>,
+    pub status: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DailyLog {
+    pub id: String,
+    pub cycle_id: Option<String>,
+    pub task_id: Option<String>,
+    pub worker_id: Option<String>,
+    pub worker_name: Option<String>,
+    pub activity: String,
+    pub time_spent_hours: Option<f64>,
+    pub date: String,
+    pub notes: Option<String>,
+}
+
+/* Worker ERP */
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Attendance {
+    pub id: String,
+    pub worker_id: String,
+    pub worker_name: Option<String>,
+    pub check_in: String,
+    pub check_out: Option<String>,
+    pub status: String,
+    pub date: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Payroll {
+    pub id: String,
+    pub worker_id: String,
+    pub worker_name: Option<String>,
+    pub period_start: String,
+    pub period_end: String,
+    pub base_pay: f64,
+    pub bonus: f64,
+    pub deductions: f64,
+    pub total_pay: f64,
+    pub status: String,
+}
+
+/* Budgeting */
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Budget {
+    pub id: String,
+    pub name: String,
+    pub start_date: String,
+    pub end_date: String,
+    pub total_amount: f64,
+    pub status: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BudgetItem {
+    pub id: String,
+    pub budget_id: String,
+    pub category: String,
+    pub allocated_amount: f64,
+    pub spent_amount: f64,
+    pub notes: Option<String>,
+}
+
+/* CRM */
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Customer {
+    pub id: String,
+    pub name: String,
+    pub phone: Option<String>,
+    pub email: Option<String>,
+    pub address: Option<String>,
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Order {
+    pub id: String,
+    pub customer_id: String,
+    pub customer_name: Option<String>,
+    pub order_date: String,
+    pub total_amount: f64,
+    pub status: String,
+    pub payment_status: String,
+}

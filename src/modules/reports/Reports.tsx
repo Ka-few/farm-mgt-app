@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { FileText, Wallet, Milk, Heart, Sprout, Users } from 'lucide-react';
 import FinancialReport from './FinancialReport';
 import MilkReport from './MilkReport';
 import HealthReport from './HealthReport';
 import CropsReport from './CropsReport';
 import WorkersReport from './WorkersReport';
+import CRMReport from './CRMReport';
+import { FileText, Wallet, Milk, Heart, Sprout, Users, Contact2 } from 'lucide-react';
 
 const Reports: React.FC = () => {
     const [activeTab, setActiveTab] = useState('financial');
@@ -14,7 +15,8 @@ const Reports: React.FC = () => {
         { id: 'milk', label: 'Milk', icon: <Milk size={18} /> },
         { id: 'health', label: 'Health', icon: <Heart size={18} /> },
         { id: 'crops', label: 'Crops', icon: <Sprout size={18} /> },
-        { id: 'workers', label: 'Workers', icon: <Users size={18} /> }
+        { id: 'workers', label: 'Workers', icon: <Users size={18} /> },
+        { id: 'crm', label: 'CRM', icon: <Contact2 size={18} /> }
     ];
 
     return (
@@ -52,6 +54,7 @@ const Reports: React.FC = () => {
                 {activeTab === 'health' && <HealthReport />}
                 {activeTab === 'crops' && <CropsReport />}
                 {activeTab === 'workers' && <WorkersReport />}
+                {activeTab === 'crm' && <CRMReport />}
             </div>
         </div>
     );
