@@ -86,7 +86,7 @@ const Finance: React.FC = () => {
                         <div className="icon-box primary"><TrendingUp size={24} /></div>
                     </div>
                     <div className="stat-body">
-                        <span className="stat-value" style={{ color: 'var(--accent-primary)' }}>KShs {summary.income.toFixed(2)}</span>
+                        <span className="stat-value" style={{ color: 'var(--accent-primary)' }}>Kshs {summary.income.toFixed(2)}</span>
                         <span className="stat-label">Total Income</span>
                     </div>
                 </div>
@@ -96,7 +96,7 @@ const Finance: React.FC = () => {
                         <div className="icon-box danger"><TrendingDown size={24} /></div>
                     </div>
                     <div className="stat-body">
-                        <span className="stat-value" style={{ color: 'var(--accent-danger)' }}>KShs {summary.expenses.toFixed(2)}</span>
+                        <span className="stat-value" style={{ color: 'var(--accent-danger)' }}>Kshs {summary.expenses.toFixed(2)}</span>
                         <span className="stat-label">Total Expenses</span>
                     </div>
                 </div>
@@ -106,7 +106,7 @@ const Finance: React.FC = () => {
                         <div className="icon-box secondary"><DollarSign size={24} /></div>
                     </div>
                     <div className="stat-body">
-                        <span className="stat-value">KShs {summary.balance.toFixed(2)}</span>
+                        <span className="stat-value">Kshs {summary.balance.toFixed(2)}</span>
                         <span className="stat-label">Net Profit/Loss</span>
                     </div>
                 </div >
@@ -157,7 +157,7 @@ const Finance: React.FC = () => {
                                         </span>
                                     </td>
                                     <td style={{ fontWeight: 700, color: tx.record_type === 'income' ? 'var(--accent-primary)' : 'var(--text-primary)' }}>
-                                        {tx.record_type === 'income' ? '+' : '-'}KShs {tx.amount.toFixed(2)}
+                                        {tx.record_type === 'income' ? '+' : '-'}Kshs {tx.amount.toFixed(2)}
                                     </td>
                                     <td>
                                         <div style={{ display: 'flex', gap: '0.4rem' }}>

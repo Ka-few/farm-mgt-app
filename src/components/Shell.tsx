@@ -26,7 +26,7 @@ const Shell: React.FC<ShellProps> = ({ children }) => {
             <aside className="sidebar">
                 <div className="sidebar-header">
                     <div className="logo-icon">🌿</div>
-                    <span className="logo-text">JOMUKU FARM</span>
+                    <span className="logo-text">ShambaSmart FARM</span>
                 </div>
 
                 <nav className="sidebar-nav">

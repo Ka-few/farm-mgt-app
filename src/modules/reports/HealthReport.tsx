@@ -55,18 +55,18 @@ const HealthReport: React.FC = () => {
         const doc = new jsPDF();
 
         doc.setFontSize(18);
-        doc.text('JOMUKU FARM – Livestock Health Report', 14, 20);
+        doc.text('ShambaSmart FARM – Livestock Health Report', 14, 20);
         doc.setFontSize(11);
         doc.text(`Generated: ${new Date().toLocaleDateString('en-KE')}`, 14, 28);
         doc.line(14, 30, 196, 30);
 
         doc.setFontSize(12);
         doc.text(`Total Records:     ${records.length}`, 14, 40);
-        doc.text(`Total Vet Costs:   KShs ${totalCost.toFixed(2)}`, 14, 48);
+        doc.text(`Total Vet Costs:   Kshs ${totalCost.toFixed(2)}`, 14, 48);
 
         autoTable(doc, {
             startY: 56,
-            head: [['Date', 'Animal', 'Type', 'Description', 'Next Visit', 'Cost (KShs)']],
+            head: [['Date', 'Animal', 'Type', 'Description', 'Next Visit', 'Cost (Kshs)']],
             body: records.map(r => [
                 new Date(r.record_date).toLocaleDateString('en-KE'),
                 `${r.livestock_tag || '?'} ${r.livestock_name || ''}`,
@@ -94,7 +94,7 @@ const HealthReport: React.FC = () => {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '2rem' }}>
                 {[
                     { label: 'Total Cases', value: records.length },
-                    { label: 'Vet Costs', value: `KShs ${totalCost.toFixed(2)}`, color: '#ef4444' },
+                    { label: 'Vet Costs', value: `Kshs ${totalCost.toFixed(2)}`, color: '#ef4444' },
                     { label: 'Most Common', value: pieData.length > 0 ? pieData[0].name : 'N/A', color: '#f59e0b' }
                 ].map(c => (
                     <div key={c.label} className="stat-card glass" style={{ padding: '1.5rem' }}>
@@ -131,7 +131,7 @@ const HealthReport: React.FC = () => {
                                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                                         <XAxis dataKey="month" tick={{ fill: 'var(--text-secondary)', fontSize: 10 }} />
                                         <YAxis tick={{ fill: 'var(--text-secondary)', fontSize: 10 }} />
-                                        <Tooltip formatter={(v: any) => `KShs ${Number(v).toLocaleString()}`} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: 8 }} />
+                                        <Tooltip formatter={(v: any) => `Kshs ${Number(v).toLocaleString()}`} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: 8 }} />
                                         <Line type="monotone" dataKey="cost" stroke="#f59e0b" strokeWidth={2} dot={{ r: 4 }} />
                                     </LineChart>
                                 </ResponsiveContainer>
@@ -148,7 +148,7 @@ const HealthReport: React.FC = () => {
                                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                                     <XAxis type="number" tick={{ fill: 'var(--text-secondary)', fontSize: 10 }} />
                                     <YAxis dataKey="name" type="category" tick={{ fill: 'var(--text-secondary)', fontSize: 9 }} width={120} />
-                                    <Tooltip formatter={(v: any) => `KShs ${Number(v).toLocaleString()}`} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: 8 }} />
+                                    <Tooltip formatter={(v: any) => `Kshs ${Number(v).toLocaleString()}`} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: 8 }} />
                                     <Bar dataKey="cost" name="Cost" fill="#f59e0b" radius={[0, 4, 4, 0]} />
                                 </BarChart>
                             </ResponsiveContainer>
@@ -172,7 +172,7 @@ const HealthReport: React.FC = () => {
                                         <td><span className="badge badge-warning">{r.record_type}</span></td>
                                         <td style={{ color: 'var(--text-secondary)' }}>{r.description || '-'}</td>
                                         <td style={{ color: 'var(--text-secondary)' }}>{r.next_visit ? new Date(r.next_visit).toLocaleDateString() : '-'}</td>
-                                        <td>{r.cost > 0 ? `KShs ${r.cost.toFixed(2)}` : '-'}</td>
+                                        <td>{r.cost > 0 ? `Kshs ${r.cost.toFixed(2)}` : '-'}</td>
                                     </tr>
                                 ))}
                             </tbody>

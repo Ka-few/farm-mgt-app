@@ -84,7 +84,7 @@ const LaborLogs: React.FC = () => {
                         <label><User size={14} /> Worker</label>
                         <select value={workerId} onChange={(e) => setWorkerId(e.target.value)} required>
                             <option value="">Select Worker...</option>
-                            {workers.map(w => <option key={w.id} value={w.id}>{w.name} (KShs {w.daily_rate}/day)</option>)}
+                            {workers.map(w => <option key={w.id} value={w.id}>{w.name} (Kshs {w.daily_rate}/day)</option>)}
                         </select>
                     </div>
 

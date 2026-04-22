@@ -63,7 +63,7 @@ const FinancialReport: React.FC = () => {
         const doc = new jsPDF();
 
         doc.setFontSize(18);
-        doc.text('JOMUKU FARM – Financial Report', 14, 20);
+        doc.text('ShambaSmart FARM – Financial Report', 14, 20);
         doc.setFontSize(11);
         doc.text(`Generated: ${new Date().toLocaleDateString('en-KE')}`, 14, 28);
         doc.setLineWidth(0.3);
@@ -71,15 +71,15 @@ const FinancialReport: React.FC = () => {
 
         // Summary
         doc.setFontSize(12);
-        doc.text(`Total Income:   KShs ${income.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 14, 40);
-        doc.text(`Total Expenses: KShs ${expenses.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 14, 48);
+        doc.text(`Total Income:   Kshs ${income.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 14, 40);
+        doc.text(`Total Expenses: Kshs ${expenses.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 14, 48);
         doc.setTextColor(balance >= 0 ? '#10b981' : '#ef4444');
-        doc.text(`Net Balance:    KShs ${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 14, 56);
+        doc.text(`Net Balance:    Kshs ${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 14, 56);
         doc.setTextColor('#000000');
 
         autoTable(doc, {
             startY: 64,
-            head: [['Date', 'Category', 'Description', 'Type', 'Amount (KShs)']],
+            head: [['Date', 'Category', 'Description', 'Type', 'Amount (Kshs)']],
             body: records.map(r => [
                 new Date(r.date).toLocaleDateString('en-KE'),
                 r.category,
@@ -106,9 +106,9 @@ const FinancialReport: React.FC = () => {
             {/* Summary Cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '2rem' }}>
                 {[
-                    { label: 'Total Income', value: `KShs ${income.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, color: '#10b981' },
-                    { label: 'Total Expenses', value: `KShs ${expenses.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, color: '#ef4444' },
-                    { label: 'Net Balance', value: `KShs ${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, color: balance >= 0 ? '#10b981' : '#ef4444' }
+                    { label: 'Total Income', value: `Kshs ${income.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, color: '#10b981' },
+                    { label: 'Total Expenses', value: `Kshs ${expenses.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, color: '#ef4444' },
+                    { label: 'Net Balance', value: `Kshs ${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, color: balance >= 0 ? '#10b981' : '#ef4444' }
                 ].map(c => (
                     <div key={c.label} className="stat-card glass" style={{ padding: '1.5rem' }}>
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>{c.label}</div>
@@ -128,7 +128,7 @@ const FinancialReport: React.FC = () => {
                                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                                     <XAxis dataKey="month" tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} />
                                     <YAxis tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} />
-                                    <Tooltip formatter={(v: any) => `KShs ${v.toLocaleString()}`} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: 8 }} />
+                                    <Tooltip formatter={(v: any) => `Kshs ${v.toLocaleString()}`} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: 8 }} />
                                     <Legend />
                                     <Bar dataKey="income" name="Income" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                                     <Bar dataKey="expenses" name="Expenses" fill="#ef4444" radius={[4, 4, 0, 0]} />
@@ -147,7 +147,7 @@ const FinancialReport: React.FC = () => {
                                         <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`} labelLine={false}>
                                             {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                                         </Pie>
-                                        <Tooltip formatter={(v: any) => `KShs ${v.toLocaleString()}`} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: 8 }} />
+                                        <Tooltip formatter={(v: any) => `Kshs ${v.toLocaleString()}`} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: 8 }} />
                                     </PieChart>
                                 </ResponsiveContainer>
                             )}
@@ -162,7 +162,7 @@ const FinancialReport: React.FC = () => {
                                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                                         <XAxis dataKey="date" tick={{ fill: 'var(--text-secondary)', fontSize: 10 }} />
                                         <YAxis tick={{ fill: 'var(--text-secondary)', fontSize: 10 }} />
-                                        <Tooltip formatter={(v: any) => `KShs ${v.toLocaleString()}`} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: 8 }} />
+                                        <Tooltip formatter={(v: any) => `Kshs ${v.toLocaleString()}`} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: 8 }} />
                                         <Line type="monotone" dataKey="balance" stroke="#3b82f6" strokeWidth={2} dot={false} />
                                     </LineChart>
                                 </ResponsiveContainer>
@@ -189,7 +189,7 @@ const FinancialReport: React.FC = () => {
                                         <td style={{ color: 'var(--text-secondary)' }}>{r.description || '-'}</td>
                                         <td><span className={`badge ${r.record_type === 'income' ? 'badge-success' : 'badge-warning'}`}>{r.record_type}</span></td>
                                         <td style={{ fontWeight: 700, color: r.record_type === 'income' ? 'var(--accent-primary)' : 'var(--text-primary)' }}>
-                                            {r.record_type === 'income' ? '+' : '-'}KShs {r.amount.toFixed(2)}
+                                            {r.record_type === 'income' ? '+' : '-'}Kshs {r.amount.toFixed(2)}
                                         </td>
                                     </tr>
                                 ))}

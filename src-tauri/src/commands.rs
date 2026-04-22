@@ -186,7 +186,7 @@ pub fn add_plot(
 pub fn get_crops(state: State<DbState>) -> Result<Vec<Crop>, String> {
     let conn = state.0.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn.prepare("
-        SELECT c.id, c.plot_id, p.name as plot_name, c.name, c.variety, c.phase, c.planting_date, c.created_at 
+        SELECT c.id, c.plot_id, p.name as plot_name, c.name, c.variety, c.phase, c.planting_date, c.planted_area, c.unit, c.created_at 
         FROM crops c
         LEFT JOIN plots p ON c.plot_id = p.id
         ORDER BY planting_date DESC
@@ -203,7 +203,9 @@ pub fn get_crops(state: State<DbState>) -> Result<Vec<Crop>, String> {
                 variety: row.get(4)?,
                 phase: row.get(5)?,
                 planting_date: row.get(6)?,
-                created_at: row.get(7)?,
+                planted_area: row.get(7)?,
+                unit: row.get(8)?,
+                created_at: row.get(9)?,
             })
         })
         .map_err(|e| e.to_string())?;
@@ -222,12 +224,14 @@ pub fn add_crop(
     name: String,
     variety: String,
     date: String,
+    planted_area: Option<f64>,
+    unit: Option<String>,
 ) -> Result<String, String> {
     let conn = state.0.lock().map_err(|e| e.to_string())?;
     let id = Uuid::new_v4().to_string();
     conn.execute(
-        "INSERT INTO crops (id, plot_id, name, variety, phase, planting_date) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-        params![id, plot_id, name, variety, "Planting", date],
+        "INSERT INTO crops (id, plot_id, name, variety, phase, planting_date, planted_area, unit) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        params![id, plot_id, name, variety, "Planting", date, planted_area, unit],
     ).map_err(|e| e.to_string())?;
     Ok(id)
 }
@@ -1124,11 +1128,13 @@ pub fn update_crop(
     variety: String,
     phase: String,
     date: String,
+    planted_area: Option<f64>,
+    unit: Option<String>,
 ) -> Result<(), String> {
     let conn = state.0.lock().map_err(|e| e.to_string())?;
     conn.execute(
-        "UPDATE crops SET name = ?1, variety = ?2, phase = ?3, planting_date = ?4 WHERE id = ?5",
-        params![name, variety, phase, date, id],
+        "UPDATE crops SET name = ?1, variety = ?2, phase = ?3, planting_date = ?4, planted_area = ?5, unit = ?6 WHERE id = ?7",
+        params![name, variety, phase, date, planted_area, unit, id],
     )
     .map_err(|e| e.to_string())?;
     Ok(())
@@ -1549,6 +1555,110 @@ pub fn get_input_usage(
         }
     }
     Ok(list)
+}
+
+#[tauri::command]
+pub fn update_input(
+    state: State<DbState>,
+    id: String,
+    name: String,
+    category: String,
+    unit: String,
+    unit_price: f64,
+    stock_quantity: f64,
+) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "UPDATE inputs SET name = ?1, category = ?2, unit = ?3, unit_price = ?4, stock_quantity = ?5 WHERE id = ?6",
+        params![name, category, unit, unit_price, stock_quantity, id],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn delete_input(state: State<DbState>, id: String) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM inputs WHERE id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn delete_input_usage(state: State<DbState>, id: String) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+
+    // Get usage details to restore stock
+    let mut stmt = conn
+        .prepare("SELECT input_id, quantity FROM crop_input_usage WHERE id = ?1")
+        .map_err(|e| e.to_string())?;
+    let (input_id, quantity): (String, f64) = stmt
+        .query_row(params![id], |row| Ok((row.get(0)?, row.get(1)?)))
+        .map_err(|e| e.to_string())?;
+
+    // Restore stock
+    conn.execute(
+        "UPDATE inputs SET stock_quantity = stock_quantity + ?1 WHERE id = ?2",
+        params![quantity, input_id],
+    )
+    .map_err(|e| e.to_string())?;
+
+    // Delete associated finance record
+    conn.execute(
+        "DELETE FROM finance_records WHERE linked_entity_type = 'crop_input_usage' AND linked_entity_id = ?1",
+        params![id],
+    )
+    .ok();
+
+    // Delete usage record
+    conn.execute("DELETE FROM crop_input_usage WHERE id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn update_input_usage(
+    state: State<DbState>,
+    id: String,
+    quantity: f64,
+    cost: f64,
+    notes: Option<String>,
+) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+
+    // Get old usage to adjust stock
+    let mut stmt = conn
+        .prepare("SELECT input_id, quantity FROM crop_input_usage WHERE id = ?1")
+        .map_err(|e| e.to_string())?;
+    let (input_id, old_quantity): (String, f64) = stmt
+        .query_row(params![id], |row| Ok((row.get(0)?, row.get(1)?)))
+        .map_err(|e| e.to_string())?;
+
+    let diff = quantity - old_quantity;
+
+    // Adjust stock
+    conn.execute(
+        "UPDATE inputs SET stock_quantity = stock_quantity - ?1 WHERE id = ?2",
+        params![diff, input_id],
+    )
+    .map_err(|e| e.to_string())?;
+
+    // Update finance record if it exists
+    conn.execute(
+        "UPDATE finance_records SET amount = ?1 WHERE linked_entity_type = 'crop_input_usage' AND linked_entity_id = ?2",
+        params![cost, id],
+    )
+    .ok();
+
+    // Update usage record
+    conn.execute(
+        "UPDATE crop_input_usage SET quantity = ?1, cost = ?2, notes = ?3 WHERE id = ?4",
+        params![quantity, cost, notes, id],
+    )
+    .map_err(|e| e.to_string())?;
+
+    Ok(())
 }
 
 // --- Operational Tracking Commands ---
@@ -2031,6 +2141,58 @@ pub fn add_order(
     ).ok();
 
     Ok(id)
+}
+
+#[tauri::command]
+pub fn update_order(
+    state: State<DbState>,
+    id: String,
+    customer_id: String,
+    total_amount: f64,
+    order_date: String,
+    status: String,
+    payment_status: String,
+) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "UPDATE orders SET customer_id = ?1, total_amount = ?2, order_date = ?3, status = ?4, payment_status = ?5 WHERE id = ?6",
+        params![customer_id, total_amount, order_date, status, payment_status, id],
+    )
+    .map_err(|e| e.to_string())?;
+
+    // Update income record description if exists
+    conn.execute(
+        "UPDATE finance_records SET amount = ?1, date = ?2, description = ?3 WHERE linked_entity_type = 'orders' AND linked_entity_id = ?4",
+        params![total_amount, order_date, format!("Order from customer: {}", customer_id), id],
+    ).ok();
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn delete_order(state: State<DbState>, id: String) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    // Delete linked finance records
+    conn.execute(
+        "DELETE FROM finance_records WHERE linked_entity_type = 'orders' AND linked_entity_id = ?1",
+        params![id],
+    )
+    .ok();
+    // Delete order
+    conn.execute("DELETE FROM orders WHERE id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn complete_payment(state: State<DbState>, id: String) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "UPDATE orders SET payment_status = 'paid' WHERE id = ?1",
+        params![id],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 #[tauri::command]

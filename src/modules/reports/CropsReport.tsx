@@ -55,7 +55,7 @@ const CropsReport: React.FC = () => {
         const doc = new jsPDF();
 
         doc.setFontSize(18);
-        doc.text('JOMUKU FARM – Crop Status Report', 14, 20);
+        doc.text('ShambaSmart FARM – Crop Status Report', 14, 20);
         doc.setFontSize(11);
         doc.text(`Generated: ${new Date().toLocaleDateString('en-KE')}`, 14, 28);
         doc.line(14, 30, 196, 30);
@@ -76,7 +76,7 @@ const CropsReport: React.FC = () => {
         autoTable(doc, {
             startY: (doc as any).lastAutoTable.finalY + 10,
             head: [['Crop', 'Quantity', 'Unit', 'Harvest Date', 'Cost']],
-            body: harvests.map(h => [h.crop_name || '-', h.quantity, h.unit, new Date(h.harvest_date).toLocaleDateString('en-KE'), `KShs ${h.cost.toFixed(2)}`]),
+            body: harvests.map(h => [h.crop_name || '-', h.quantity, h.unit, new Date(h.harvest_date).toLocaleDateString('en-KE'), `Kshs ${h.cost.toFixed(2)}`]),
             styles: { fontSize: 9 },
             headStyles: { fillColor: [59, 130, 246] }
         });

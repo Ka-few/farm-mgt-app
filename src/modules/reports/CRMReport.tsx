@@ -54,19 +54,19 @@ const CRMReport: React.FC = () => {
         const doc = new jsPDF();
 
         doc.setFontSize(18);
-        doc.text('JOMUKU FARM – CRM & Sales Report', 14, 20);
+        doc.text('ShambaSmart FARM – CRM & Sales Report', 14, 20);
         doc.setFontSize(11);
         doc.text(`Generated: ${new Date().toLocaleDateString('en-KE')}`, 14, 28);
         doc.line(14, 30, 196, 30);
 
         doc.text(`Total Customers: ${customers.length}`, 14, 40);
         doc.text(`Total Orders: ${orders.length}`, 14, 48);
-        doc.text(`Total Revenue: KShs ${orders.reduce((s, o) => s + o.total_amount, 0).toLocaleString()}`, 14, 56);
+        doc.text(`Total Revenue: Kshs ${orders.reduce((s, o) => s + o.total_amount, 0).toLocaleString()}`, 14, 56);
 
         autoTable(doc, {
             startY: 64,
             head: [['Customer', 'Order Date', 'Amount', 'Status']],
-            body: orders.map(o => [o.customer_name, new Date(o.order_date).toLocaleDateString(), `KShs ${o.total_amount.toFixed(2)}`, o.status]),
+            body: orders.map(o => [o.customer_name, new Date(o.order_date).toLocaleDateString(), `Kshs ${o.total_amount.toFixed(2)}`, o.status]),
             styles: { fontSize: 9 },
             headStyles: { fillColor: [16, 185, 129] }
         });
@@ -87,7 +87,7 @@ const CRMReport: React.FC = () => {
                 {[
                     { label: 'Total Customers', value: customers.length, icon: <Users size={20} /> },
                     { label: 'Total Orders', value: orders.length, icon: <ShoppingBag size={20} /> },
-                    { label: 'Total Revenue', value: `KShs ${orders.reduce((s, o) => s + o.total_amount, 0).toLocaleString()}`, icon: <TrendingUp size={20} /> }
+                    { label: 'Total Revenue', value: `Kshs ${orders.reduce((s, o) => s + o.total_amount, 0).toLocaleString()}`, icon: <TrendingUp size={20} /> }
                 ].map(c => (
                     <div key={c.label} className="stat-card glass" style={{ padding: '1.5rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -109,7 +109,7 @@ const CRMReport: React.FC = () => {
                                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                                     <XAxis type="number" hide />
                                     <YAxis type="category" dataKey="name" tick={{ fill: 'var(--text-secondary)', fontSize: 11 }} width={100} />
-                                    <Tooltip formatter={(v: any) => `KShs ${Number(v).toLocaleString()}`} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: 8 }} />
+                                    <Tooltip formatter={(v: any) => `Kshs ${Number(v).toLocaleString()}`} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: 8 }} />
                                     <Bar dataKey="value" fill="#3b82f6" radius={[0, 4, 4, 0]} />
                                 </BarChart>
                             </ResponsiveContainer>
@@ -139,7 +139,7 @@ const CRMReport: React.FC = () => {
                                     <tr key={o.id}>
                                         <td style={{ fontWeight: 600 }}>{o.customer_name}</td>
                                         <td>{new Date(o.order_date).toLocaleDateString()}</td>
-                                        <td>KShs {o.total_amount.toLocaleString()}</td>
+                                        <td>Kshs {o.total_amount.toLocaleString()}</td>
                                         <td><span className={`badge badge-${o.status === 'Completed' ? 'success' : 'info'}`}>{o.status}</span></td>
                                     </tr>
                                 ))}

@@ -107,7 +107,7 @@ const CropHarvesting: React.FC = () => {
                 </div>
                 <div className="stat-card glass">
                     <div className="stat-body">
-                        <span className="stat-value" style={{ color: 'var(--accent-danger)' }}>KShs {totalCost.toFixed(2)}</span>
+                        <span className="stat-value" style={{ color: 'var(--accent-danger)' }}>Kshs {totalCost.toFixed(2)}</span>
                         <span className="stat-label">Total Harvesting Costs</span>
                     </div>
                 </div>
@@ -154,7 +154,7 @@ const CropHarvesting: React.FC = () => {
                             <input type="date" value={harvestDate} onChange={e => setHarvestDate(e.target.value)} required />
                         </div>
                         <div className="input-group">
-                            <label>Cost Incurred (KShs)</label>
+                            <label>Cost Incurred (Kshs)</label>
                             <input type="number" step="0.01" min="0" value={cost} onChange={e => setCost(e.target.value)} placeholder="0.00" />
                         </div>
                     </div>
@@ -187,7 +187,7 @@ const CropHarvesting: React.FC = () => {
                                 <td>{new Date(r.harvest_date).toLocaleDateString()}</td>
                                 <td style={{ fontWeight: 600 }}>{r.crop_name || '-'}</td>
                                 <td style={{ fontWeight: 700, color: 'var(--accent-primary)' }}>{r.quantity} {r.unit}</td>
-                                <td>{r.cost > 0 ? `KShs ${r.cost.toFixed(2)}` : '-'}</td>
+                                <td>{r.cost > 0 ? `Kshs ${r.cost.toFixed(2)}` : '-'}</td>
                                 <td style={{ color: 'var(--text-secondary)' }}>{r.notes || '-'}</td>
                                 <td><div style={{ display: 'flex', gap: '0.5rem' }}>
                                     <button className="btn-icon" onClick={() => setEditingRecord(r)}><Edit2 size={14} /></button>
@@ -234,7 +234,7 @@ const CropHarvesting: React.FC = () => {
                                     <input type="date" value={editingRecord.harvest_date} onChange={e => setEditingRecord({ ...editingRecord, harvest_date: e.target.value })} required />
                                 </div>
                                 <div className="input-group">
-                                    <label>Cost (KShs)</label>
+                                    <label>Cost (Kshs)</label>
                                     <input type="number" step="0.01" value={editingRecord.cost} onChange={e => setEditingRecord({ ...editingRecord, cost: parseFloat(e.target.value) || 0 })} />
                                 </div>
                             </div>

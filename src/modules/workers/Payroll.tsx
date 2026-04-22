@@ -100,7 +100,7 @@ const Payroll: React.FC = () => {
                                     <td style={{ padding: '1rem', fontWeight: 600 }}>{p.worker_name}</td>
                                     <td style={{ padding: '1rem', fontSize: '0.85rem' }}>{p.period_start} to {p.period_end}</td>
                                     <td style={{ padding: '1rem' }}>{p.days_worked}</td>
-                                    <td style={{ padding: '1rem', fontWeight: 700, color: 'var(--accent-secondary)' }}>KShs {p.total_amount.toLocaleString()}</td>
+                                    <td style={{ padding: '1rem', fontWeight: 700, color: 'var(--accent-secondary)' }}>Kshs {p.total_amount.toLocaleString()}</td>
                                     <td style={{ padding: '1rem' }}>
                                         <span className="badge badge-success" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
                                             <CheckCircle size={14} /> {p.payment_status}

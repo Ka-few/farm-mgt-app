@@ -146,7 +146,7 @@ const FarmSetup: React.FC = () => {
                             <label>Default Currency</label>
                             <select value={currency} onChange={(e) => setCurrency(e.target.value)}>
                                 <option value="USD">USD ($)</option>
-                                <option value="KES">KES (KShs)</option>
+                                <option value="KES">KES (Kshs)</option>
                                 <option value="EUR">EUR (€)</option>
                                 <option value="GBP">GBP (£)</option>
                             </select>

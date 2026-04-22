@@ -127,7 +127,7 @@ const CropWeeding: React.FC = () => {
                             <input type="date" value={date} onChange={e => setDate(e.target.value)} required />
                         </div>
                         <div className="input-group">
-                            <label>Cost / Expense (KShs)</label>
+                            <label>Cost / Expense (Kshs)</label>
                             <input type="number" step="0.01" min="0" value={cost} onChange={e => setCost(e.target.value)} placeholder="0.00" />
                         </div>
                     </div>
@@ -162,7 +162,7 @@ const CropWeeding: React.FC = () => {
                                     <span className={`badge ${r.mode === 'manual' ? 'badge-info' : r.mode === 'herbicide' ? 'badge-warning' : 'badge-success'}`}>{r.mode}</span>
                                 </td>
                                 <td>{r.herbicide_name || '-'}</td>
-                                <td>{r.cost > 0 ? `KShs ${r.cost.toFixed(2)}` : '-'}</td>
+                                <td>{r.cost > 0 ? `Kshs ${r.cost.toFixed(2)}` : '-'}</td>
                                 <td style={{ color: 'var(--text-secondary)' }}>{r.notes || '-'}</td>
                                 <td><div style={{ display: 'flex', gap: '0.5rem' }}>
                                     <button className="btn-icon" onClick={() => setEditingRecord(r)}><Edit2 size={14} /></button>
@@ -206,7 +206,7 @@ const CropWeeding: React.FC = () => {
                                     <input type="date" value={editingRecord.date} onChange={e => setEditingRecord({ ...editingRecord, date: e.target.value })} required />
                                 </div>
                                 <div className="input-group">
-                                    <label>Cost (KShs)</label>
+                                    <label>Cost (Kshs)</label>
                                     <input type="number" step="0.01" value={editingRecord.cost} onChange={e => setEditingRecord({ ...editingRecord, cost: parseFloat(e.target.value) || 0 })} />
                                 </div>
                             </div>

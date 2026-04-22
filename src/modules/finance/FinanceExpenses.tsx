@@ -122,7 +122,7 @@ const FinanceExpenses: React.FC = () => {
 
                     <div className="input-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
                         <div className="input-group">
-                            <label>Amount (KShs)</label>
+                            <label>Amount (Kshs)</label>
                             <input type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" required />
                         </div>
                         <div className="input-group">
@@ -172,7 +172,7 @@ const FinanceExpenses: React.FC = () => {
                                         )}
                                     </td>
                                     <td style={{ color: 'var(--text-secondary)' }}>{tx.description}</td>
-                                    <td style={{ fontWeight: 700, color: 'var(--text-primary)' }}>-KShs {tx.amount.toFixed(2)}</td>
+                                    <td style={{ fontWeight: 700, color: 'var(--text-primary)' }}>-Kshs {tx.amount.toFixed(2)}</td>
                                     <td>
                                         <button className="btn-icon danger" onClick={() => handleDelete(tx.id)}><Trash2 size={14} /></button>
                                     </td>

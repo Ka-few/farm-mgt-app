@@ -120,6 +120,8 @@ pub struct Crop {
     pub variety: Option<String>,
     pub phase: Option<String>,
     pub planting_date: Option<String>,
+    pub planted_area: Option<f64>,
+    pub unit: Option<String>,
     pub created_at: Option<String>,
 }
 

@@ -55,19 +55,19 @@ const WorkersReport: React.FC = () => {
         const doc = new jsPDF();
 
         doc.setFontSize(18);
-        doc.text('JOMUKU FARM – Workers & Labor Report', 14, 20);
+        doc.text('ShambaSmart FARM – Workers & Labor Report', 14, 20);
         doc.setFontSize(11);
         doc.text(`Generated: ${new Date().toLocaleDateString('en-KE')}`, 14, 28);
         doc.line(14, 30, 196, 30);
 
         doc.setFontSize(12);
         doc.text(`Active Workers:   ${activeWorkers.length} / ${workers.length}`, 14, 40);
-        doc.text(`Avg Daily Rate:   KShs ${averageWage.toFixed(2)}`, 14, 48);
-        doc.text(`Total Labor Cost: KShs ${totalLaborCost.toFixed(2)}`, 14, 56);
+        doc.text(`Avg Daily Rate:   Kshs ${averageWage.toFixed(2)}`, 14, 48);
+        doc.text(`Total Labor Cost: Kshs ${totalLaborCost.toFixed(2)}`, 14, 56);
 
         autoTable(doc, {
             startY: 64,
-            head: [['Name', 'Role', 'Status', 'Daily Rate (KShs)']],
+            head: [['Name', 'Role', 'Status', 'Daily Rate (Kshs)']],
             body: workers.map(w => [w.name, w.role || '-', (w.is_active === 1 || w.is_active) ? 'Active' : 'Inactive', (w.daily_rate || 0).toFixed(2)]),
             styles: { fontSize: 9 },
             headStyles: { fillColor: [59, 130, 246] }
@@ -88,8 +88,8 @@ const WorkersReport: React.FC = () => {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '2rem' }}>
                 {[
                     { label: 'Active Workers', value: `${activeWorkers.length} / ${workers.length}`, color: '#10b981' },
-                    { label: 'Avg Daily Rate', value: `KShs ${averageWage.toFixed(2)}`, color: 'var(--text-primary)' },
-                    { label: 'Total Labor Cost', value: `KShs ${totalLaborCost.toFixed(2)}`, color: '#ef4444' }
+                    { label: 'Avg Daily Rate', value: `Kshs ${averageWage.toFixed(2)}`, color: 'var(--text-primary)' },
+                    { label: 'Total Labor Cost', value: `Kshs ${totalLaborCost.toFixed(2)}`, color: '#ef4444' }
                 ].map(c => (
                     <div key={c.label} className="stat-card glass" style={{ padding: '1.5rem' }}>
                         <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>{c.label}</div>
@@ -125,7 +125,7 @@ const WorkersReport: React.FC = () => {
                                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                                         <XAxis type="number" tick={{ fill: 'var(--text-secondary)', fontSize: 10 }} />
                                         <YAxis dataKey="name" type="category" tick={{ fill: 'var(--text-secondary)', fontSize: 10 }} width={80} />
-                                        <Tooltip formatter={(v: any) => `KShs ${v}`} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: 8 }} />
+                                        <Tooltip formatter={(v: any) => `Kshs ${v}`} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: 8 }} />
                                         <Bar dataKey="rate" name="Daily Rate" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
                                     </BarChart>
                                 </ResponsiveContainer>
@@ -142,7 +142,7 @@ const WorkersReport: React.FC = () => {
                                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                                     <XAxis dataKey="name" tick={{ fill: 'var(--text-secondary)', fontSize: 11 }} />
                                     <YAxis tick={{ fill: 'var(--text-secondary)', fontSize: 11 }} />
-                                    <Tooltip formatter={(v: any) => `KShs ${v.toLocaleString()}`} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: 8 }} />
+                                    <Tooltip formatter={(v: any) => `Kshs ${v.toLocaleString()}`} contentStyle={{ background: 'var(--bg-card)', border: '1px solid var(--glass-border)', borderRadius: 8 }} />
                                     <Bar dataKey="cost" name="Cost" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                                 </BarChart>
                             </ResponsiveContainer>
@@ -164,7 +164,7 @@ const WorkersReport: React.FC = () => {
                                         <td style={{ fontWeight: 600 }}>{w.name}</td>
                                         <td>{w.role || '-'}</td>
                                         <td><span className={`badge ${(w.is_active === 1 || w.is_active) ? 'badge-success' : 'badge-warning'}`}>{(w.is_active === 1 || w.is_active) ? 'Active' : 'Inactive'}</span></td>
-                                        <td>KShs {(w.daily_rate || 0).toFixed(2)}</td>
+                                        <td>Kshs {(w.daily_rate || 0).toFixed(2)}</td>
                                     </tr>
                                 ))}
                             </tbody>

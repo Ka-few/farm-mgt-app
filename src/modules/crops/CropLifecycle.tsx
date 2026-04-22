@@ -44,7 +44,7 @@ const CropLifecycle: React.FC = () => {
 
     const [stageData, setStageData] = useState({
         stage: 'Vegetative',
-        started_at: new Date().toISOString().split('T')[0],
+        startedAt: new Date().toISOString().split('T')[0],
         notes: ''
     });
 
@@ -110,7 +110,7 @@ const CropLifecycle: React.FC = () => {
             await invoke('add_crop_stage', {
                 cycleId: selectedCycle.id,
                 stage: stageData.stage,
-                started_at: stageData.started_at,
+                startedAt: stageData.startedAt,
                 notes: stageData.notes || null
             });
             addToast('Stage recorded!', 'success');
@@ -228,9 +228,9 @@ const CropLifecycle: React.FC = () => {
                                 <select
                                     value={stageData.stage}
                                     onChange={e => setStageData({ ...stageData, stage: e.target.value })}
-                                    style={{ padding: '0.5rem', background: 'var(--bg-input)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '4px' }}
+                                    style={{ padding: '0.5rem', background: 'var(--bg-input)', border: '1px solid rgba(255,255,255,0.1)', color: 'black', borderRadius: '4px' }}
                                 >
-                                    <option>Gemination</option>
+                                    <option>Germination</option>
                                     <option>Vegetative</option>
                                     <option>Flowering</option>
                                     <option>Ripening</option>
@@ -239,15 +239,15 @@ const CropLifecycle: React.FC = () => {
                                 </select>
                                 <input
                                     type="date"
-                                    value={stageData.started_at}
-                                    onChange={e => setStageData({ ...stageData, started_at: e.target.value })}
-                                    style={{ padding: '0.5rem', background: 'var(--bg_input)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '4px' }}
+                                    value={stageData.startedAt}
+                                    onChange={e => setStageData({ ...stageData, startedAt: e.target.value })}
+                                    style={{ padding: '0.5rem', background: 'var(--bg-input)', border: '1px solid rgba(255,255,255,0.1)', color: 'black', borderRadius: '4px' }}
                                 />
                                 <textarea
                                     placeholder="Stage notes..."
                                     value={stageData.notes}
                                     onChange={e => setStageData({ ...stageData, notes: e.target.value })}
-                                    style={{ padding: '0.5rem', background: 'var(--bg-input)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '4px', resize: 'vertical', minHeight: '60px' }}
+                                    style={{ padding: '0.5rem', background: 'var(--bg-input)', border: '1px solid rgba(255,255,255,0.1)', color: 'black', borderRadius: '4px', resize: 'vertical', minHeight: '60px' }}
                                 />
                                 <button type="submit" className="btn-secondary" style={{ padding: '0.5rem', background: 'transparent', border: '1px solid var(--accent-primary)', color: 'var(--accent-primary)', borderRadius: '4px', cursor: 'pointer', fontWeight: 600 }}>
                                     Record Transition
@@ -269,7 +269,7 @@ const CropLifecycle: React.FC = () => {
                                     required
                                     value={formData.crop_id}
                                     onChange={e => setFormData({ ...formData, crop_id: e.target.value })}
-                                    style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '4px' }}
+                                    style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid rgba(255,255,255,0.1)', color: 'black', borderRadius: '4px' }}
                                 >
                                     <option value="">-- Choose Crop --</option>
                                     {crops.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -281,7 +281,7 @@ const CropLifecycle: React.FC = () => {
                                     required
                                     value={formData.plot_id}
                                     onChange={e => setFormData({ ...formData, plot_id: e.target.value })}
-                                    style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '4px' }}
+                                    style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid rgba(255,255,255,0.1)', color: 'black', borderRadius: '4px' }}
                                 >
                                     <option value="">-- Choose Plot --</option>
                                     {plots.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -294,7 +294,7 @@ const CropLifecycle: React.FC = () => {
                                     required
                                     value={formData.start_date}
                                     onChange={e => setFormData({ ...formData, start_date: e.target.value })}
-                                    style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '4px' }}
+                                    style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid rgba(255,255,255,0.1)', color: 'black', borderRadius: '4px' }}
                                 />
                             </div>
                             <div className="form-group">
@@ -302,11 +302,11 @@ const CropLifecycle: React.FC = () => {
                                 <textarea
                                     value={formData.notes}
                                     onChange={e => setFormData({ ...formData, notes: e.target.value })}
-                                    style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '4px', minHeight: '80px' }}
+                                    style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid rgba(255,255,255,0.1)', color: 'black', borderRadius: '4px', minHeight: '80px' }}
                                 />
                             </div>
                             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                                <button type="button" className="btn-secondary" onClick={() => setShowAddForm(false)} style={{ flex: 1, padding: '0.75rem', border: '1px solid rgba(255,255,255,0.2)', background: 'transparent', color: 'white', borderRadius: '4px' }}>Cancel</button>
+                                <button type="button" className="btn-secondary" onClick={() => setShowAddForm(false)} style={{ flex: 1, padding: '0.75rem', border: '1px solid rgba(0,0,0,0.2)', background: 'transparent', color: 'black', borderRadius: '4px' }}>Cancel</button>
                                 <button type="submit" className="btn-primary" disabled={loading} style={{ flex: 1, padding: '0.75rem', background: 'var(--accent-primary)', border: 'none', color: 'white', borderRadius: '4px', fontWeight: 600 }}>
                                     {loading ? 'Starting...' : 'Start Cycle'}
                                 </button>

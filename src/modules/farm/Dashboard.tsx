@@ -74,7 +74,7 @@ const Dashboard: React.FC = () => {
                         </div>
                     </div>
                     <div className="stat-body">
-                        <span className="stat-value">KShs {stats.income.toFixed(2)}</span>
+                        <span className="stat-value">Kshs {stats.income.toFixed(2)}</span>
                         <span className="stat-label">Income (This Month)</span>
                     </div>
                 </div>
@@ -87,7 +87,7 @@ const Dashboard: React.FC = () => {
                     </div>
                     <div className="stat-body">
                         <span className="stat-value" style={{ color: 'var(--accent-danger)' }}>
-                            KShs {stats.expenses.toFixed(2)}
+                            Kshs {stats.expenses.toFixed(2)}
                         </span>
                         <span className="stat-label">Expenses (This Month)</span>
                     </div>

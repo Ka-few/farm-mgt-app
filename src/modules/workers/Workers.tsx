@@ -150,7 +150,7 @@ const Workers: React.FC = () => {
                                     <input value={role} onChange={(e) => setRole(e.target.value)} placeholder="e.g. Milker, Harvester" required />
                                 </div>
                                 <div className="input-group">
-                                    <label>Daily Rate (KShs)</label>
+                                    <label>Daily Rate (Kshs)</label>
                                     <input type="number" value={rate} onChange={(e) => setRate(e.target.value)} placeholder="0.00" required />
                                 </div>
                                 <div className="form-actions" style={{ gridColumn: '1 / -1' }}>
@@ -183,7 +183,7 @@ const Workers: React.FC = () => {
                                         <tr key={worker.id}>
                                             <td style={{ fontWeight: 600 }}>{worker.name}</td>
                                             <td>{worker.role}</td>
-                                            <td>KShs {worker.daily_rate.toFixed(2)}</td>
+                                            <td>Kshs {worker.daily_rate.toFixed(2)}</td>
                                             <td>
                                                 <span className={`badge ${worker.is_active ? 'badge-success' : 'badge-warning'}`}>
                                                     {worker.is_active ? 'Active' : 'Inactive'}
@@ -229,7 +229,7 @@ const Workers: React.FC = () => {
                                 />
                             </div>
                             <div className="input-group">
-                                <label>Daily Rate (KShs)</label>
+                                <label>Daily Rate (Kshs)</label>
                                 <input
                                     type="number"
                                     value={editingWorker.daily_rate || 0}

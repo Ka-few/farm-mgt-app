@@ -57,7 +57,7 @@ const MilkReport: React.FC = () => {
         const doc = new jsPDF();
 
         doc.setFontSize(18);
-        doc.text('JOMUKU FARM – Milk Production Report', 14, 20);
+        doc.text('ShambaSmart FARM – Milk Production Report', 14, 20);
         doc.setFontSize(11);
         doc.text(`Generated: ${new Date().toLocaleDateString('en-KE')}`, 14, 28);
         doc.line(14, 30, 196, 30);

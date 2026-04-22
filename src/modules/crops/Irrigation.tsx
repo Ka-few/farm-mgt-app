@@ -205,7 +205,7 @@ const Irrigation: React.FC = () => {
                                     <td>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                             <Zap size={14} style={{ color: 'var(--accent-warning)' }} />
-                                            KShs {record.cost.toFixed(2)}
+                                            Kshs {record.cost.toFixed(2)}
                                         </div>
                                     </td>
                                     <td>

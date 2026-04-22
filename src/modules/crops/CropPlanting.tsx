@@ -18,6 +18,8 @@ interface Crop {
     variety: string;
     phase: string;
     planting_date: string;
+    planted_area: number | null;
+    unit: string | null;
 }
 
 const CropPlanting: React.FC = () => {
@@ -29,6 +31,8 @@ const CropPlanting: React.FC = () => {
     const [variety, setVariety] = useState('');
     const [plotId, setPlotId] = useState('');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [plantedArea, setPlantedArea] = useState('');
+    const [unit, setUnit] = useState('Acres');
     const [loading, setLoading] = useState(false);
     const [editingCrop, setEditingCrop] = useState<Crop | null>(null);
 
@@ -58,11 +62,14 @@ const CropPlanting: React.FC = () => {
                 plotId,
                 name,
                 variety,
-                date
+                date,
+                plantedArea: plantedArea ? parseFloat(plantedArea) : null,
+                unit
             });
 
             setName('');
             setVariety('');
+            setPlantedArea('');
             setShowAdd(false);
             loadCrops();
             addToast('Crop record added successfully', 'success');
@@ -96,7 +103,9 @@ const CropPlanting: React.FC = () => {
                 name: editingCrop.name,
                 variety: editingCrop.variety || '',
                 phase: editingCrop.phase || '',
-                date: editingCrop.planting_date || ''
+                date: editingCrop.planting_date || '',
+                plantedArea: editingCrop.planted_area || null,
+                unit: editingCrop.unit || 'Acres'
             });
             setEditingCrop(null);
             loadCrops();
@@ -143,6 +152,29 @@ const CropPlanting: React.FC = () => {
                                 ))}
                             </select>
                         </div>
+                        <div className="input-group" style={{ gridColumn: 'span 2' }}>
+                            <label>Planted Area</label>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <input
+                                    type="number"
+                                    step="0.01"
+                                    value={plantedArea}
+                                    onChange={(e) => setPlantedArea(e.target.value)}
+                                    placeholder="e.g. 0.5"
+                                    style={{ flex: 1 }}
+                                />
+                                <select
+                                    value={unit}
+                                    onChange={(e) => setUnit(e.target.value)}
+                                    style={{ width: '120px' }}
+                                >
+                                    <option value="Acres">Acres</option>
+                                    <option value="Hectares">Hectares</option>
+                                    <option value="Square Meters">Sq Meters</option>
+                                    <option value="Beds">Beds</option>
+                                </select>
+                            </div>
+                        </div>
                         <div className="input-group">
                             <label>Planting Date</label>
                             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
@@ -161,6 +193,7 @@ const CropPlanting: React.FC = () => {
                             <th>Crop Name</th>
                             <th>Variety</th>
                             <th>Location</th>
+                            <th>Planted Area</th>
                             <th>Planting Date</th>
                             <th>Phase</th>
                             <th>Actions</th>
@@ -184,13 +217,18 @@ const CropPlanting: React.FC = () => {
                                             {crop.plot_name || 'N/A'}
                                         </div>
                                     </td>
+                                    <td>
+                                        <div style={{ fontWeight: 500 }}>
+                                            {crop.planted_area ? `${crop.planted_area} ${crop.unit || ''}` : '-'}
+                                        </div>
+                                    </td>
                                     <td>{crop.planting_date}</td>
                                     <td>
                                         <span className="badge badge-info">{crop.phase}</span>
                                     </td>
                                     <td>
                                         <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                            <button className="btn-icon" title="Edit" onClick={() => setEditingCrop(crop)}><Edit2 size={16} /></button>
+                                            <button className="btn-icon" title="Edit" onClick={() => setEditingCrop({ ...crop, unit: crop.unit || 'Acres' })}><Edit2 size={16} /></button>
                                             <button className="btn-icon danger" title="Delete" onClick={() => handleDeleteCrop(crop.id)}><Trash2 size={16} /></button>
                                         </div>
                                     </td>
@@ -242,6 +280,29 @@ const CropPlanting: React.FC = () => {
                                     value={editingCrop.planting_date || ''}
                                     onChange={(e) => setEditingCrop({ ...editingCrop, planting_date: e.target.value })}
                                 />
+                            </div>
+                            <div className="input-group">
+                                <label>Planted Area</label>
+                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={editingCrop.planted_area || ''}
+                                        onChange={(e) => setEditingCrop({ ...editingCrop, planted_area: e.target.value ? parseFloat(e.target.value) : null })}
+                                        placeholder="e.g. 0.5"
+                                        style={{ flex: 1 }}
+                                    />
+                                    <select
+                                        value={editingCrop.unit || 'Acres'}
+                                        onChange={(e) => setEditingCrop({ ...editingCrop, unit: e.target.value })}
+                                        style={{ width: '120px' }}
+                                    >
+                                        <option value="Acres">Acres</option>
+                                        <option value="Hectares">Hectares</option>
+                                        <option value="Square Meters">Sq Meters</option>
+                                        <option value="Beds">Beds</option>
+                                    </select>
+                                </div>
                             </div>
                             <div className="form-actions">
                                 <button type="submit" className="button-primary">Update</button>

@@ -126,9 +126,12 @@ pub fn establish_connection(app: &AppHandle) -> Connection {
             variety TEXT,
             phase TEXT,
             planting_date DATE,
+            planted_area REAL,
+            unit TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(plot_id) REFERENCES plots(id)
         );
+
 
         CREATE TABLE IF NOT EXISTS weeding_records (
             id TEXT PRIMARY KEY,
@@ -361,6 +364,10 @@ pub fn establish_connection(app: &AppHandle) -> Connection {
         "ALTER TABLE livestock ADD COLUMN quantity INTEGER DEFAULT 1",
         [],
     );
+
+    // Crops migrations
+    let _ = conn.execute("ALTER TABLE crops ADD COLUMN planted_area REAL", []);
+    let _ = conn.execute("ALTER TABLE crops ADD COLUMN unit TEXT", []);
 
     // Add default planting areas to prevent foreign key errors and provide generic options
     let _ = conn.execute(
