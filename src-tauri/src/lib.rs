@@ -95,6 +95,9 @@ pub fn run() {
             commands::record_attendance,
             commands::get_payroll,
             commands::generate_payroll,
+            commands::update_payroll,
+            commands::delete_payroll,
+            commands::complete_payroll_payment,
             commands::get_budgets,
             commands::add_budget,
             commands::get_budget_items,
@@ -103,7 +106,8 @@ pub fn run() {
             commands::add_customer,
             commands::get_orders,
             commands::add_order,
-            commands::chat_with_ai
+            commands::chat_with_ai,
+            commands::save_pdf
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

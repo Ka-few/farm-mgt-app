@@ -84,7 +84,7 @@ const Attendance: React.FC = () => {
                         type="date"
                         value={date}
                         onChange={e => setDate(e.target.value)}
-                        style={{ padding: '0.5rem', background: 'var(--bg-input)', border: '1px solid rgba(255,255,255,0.1)', color: 'white', borderRadius: '4px' }}
+                        style={{ padding: '0.5rem', background: 'var(--bg-input)', border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-primary)', borderRadius: '4px' }}
                     />
                 </div>
                 <button className="btn-primary" onClick={handleSave} disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.2rem', background: 'var(--accent-primary)', border: 'none', borderRadius: 'var(--radius-sm)', color: 'white', fontWeight: 600, cursor: 'pointer' }}>
@@ -112,8 +112,9 @@ const Attendance: React.FC = () => {
                                             onClick={() => handleStatusChange(worker.id, 'present')}
                                             style={{
                                                 display: 'flex', alignItems: 'center', gap: '0.25rem', padding: '0.4rem 0.8rem', borderRadius: '4px', border: 'none', cursor: 'pointer',
-                                                background: attendance[worker.id] === 'present' ? 'var(--success-bg)' : 'rgba(255,255,255,0.05)',
-                                                color: attendance[worker.id] === 'present' ? 'var(--success-text)' : 'white'
+                                                background: attendance[worker.id] === 'present' ? 'rgba(46, 125, 50, 0.15)' : 'rgba(0,0,0,0.05)',
+                                                color: attendance[worker.id] === 'present' ? 'var(--accent-success)' : 'var(--text-secondary)',
+                                                fontWeight: attendance[worker.id] === 'present' ? 600 : 400
                                             }}
                                         >
                                             <CheckCircle size={16} /> Present
@@ -122,8 +123,9 @@ const Attendance: React.FC = () => {
                                             onClick={() => handleStatusChange(worker.id, 'absent')}
                                             style={{
                                                 display: 'flex', alignItems: 'center', gap: '0.25rem', padding: '0.4rem 0.8rem', borderRadius: '4px', border: 'none', cursor: 'pointer',
-                                                background: attendance[worker.id] === 'absent' ? 'var(--error-bg)' : 'rgba(255,255,255,0.05)',
-                                                color: attendance[worker.id] === 'absent' ? 'var(--error-text)' : 'white'
+                                                background: attendance[worker.id] === 'absent' ? 'rgba(198, 40, 40, 0.15)' : 'rgba(0,0,0,0.05)',
+                                                color: attendance[worker.id] === 'absent' ? 'var(--accent-danger)' : 'var(--text-secondary)',
+                                                fontWeight: attendance[worker.id] === 'absent' ? 600 : 400
                                             }}
                                         >
                                             <XCircle size={16} /> Absent

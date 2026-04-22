@@ -1910,15 +1910,7 @@ pub fn generate_payroll(
         .query_row(params![worker_id], |row| row.get(0))
         .map_err(|e| e.to_string())?;
 
-    let mut stmt = conn.prepare("SELECT COUNT(*) FROM attendance WHERE worker_id = ?1 AND date >= ?2 AND date <= ?3 AND status = 'present'")
-        .map_err(|e| e.to_string())?;
-    let days_present: i64 = stmt
-        .query_row(params![worker_id, period_start, period_end], |row| {
-            row.get(0)
-        })
-        .map_err(|e| e.to_string())?;
-
-    let base_pay = (days_present as f64) * daily_rate;
+    let base_pay = 30.0 * daily_rate;
     let total_pay = base_pay + bonus - deductions;
     let id = Uuid::new_v4().to_string();
 
@@ -1935,6 +1927,79 @@ pub fn generate_payroll(
     ).ok();
 
     Ok(id)
+}
+
+#[tauri::command]
+pub fn update_payroll(
+    state: State<DbState>,
+    id: String,
+    period_start: String,
+    period_end: String,
+    bonus: f64,
+    deductions: f64,
+) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+
+    // recalculate base_pay based on attendance
+    let mut stmt = conn
+        .prepare("SELECT worker_id FROM payroll WHERE id = ?1")
+        .map_err(|e| e.to_string())?;
+    let worker_id: String = stmt
+        .query_row(params![id], |row| row.get(0))
+        .map_err(|e| e.to_string())?;
+
+    let mut stmt = conn
+        .prepare("SELECT daily_rate FROM workers WHERE id = ?1")
+        .map_err(|e| e.to_string())?;
+    let daily_rate: f64 = stmt
+        .query_row(params![worker_id], |row| row.get(0))
+        .map_err(|e| e.to_string())?;
+
+    let base_pay = 30.0 * daily_rate;
+    let total_pay = base_pay + bonus - deductions;
+
+    conn.execute(
+        "UPDATE payroll SET period_start = ?1, period_end = ?2, base_pay = ?3, bonus = ?4, deductions = ?5, total_pay = ?6 WHERE id = ?7",
+        params![period_start, period_end, base_pay, bonus, deductions, total_pay, id],
+    )
+    .map_err(|e| e.to_string())?;
+
+    // Update financial expense record
+    conn.execute(
+        "UPDATE finance_records SET amount = ?1, date = ?2, description = ?3 WHERE linked_entity_type = 'payroll' AND linked_entity_id = ?4",
+        params![total_pay, period_end, format!("Payroll for {} ({} - {})", worker_id, period_start, period_end), id],
+    ).ok();
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn delete_payroll(state: State<DbState>, id: String) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+
+    // Delete linked finance records
+    conn.execute(
+        "DELETE FROM finance_records WHERE linked_entity_type = 'payroll' AND linked_entity_id = ?1",
+        params![id],
+    )
+    .ok();
+
+    // Delete payroll
+    conn.execute("DELETE FROM payroll WHERE id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn complete_payroll_payment(state: State<DbState>, id: String) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "UPDATE payroll SET status = 'Paid' WHERE id = ?1",
+        params![id],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 // --- Budget Management Commands ---
@@ -2202,4 +2267,20 @@ pub async fn chat_with_ai(
 ) -> Result<serde_json::Value, String> {
     let agent = crate::ai::OllamaAgent::new("llama3.1".to_string());
     agent.chat(history, &state).await
+}
+
+#[tauri::command]
+pub fn save_pdf(
+    app_handle: tauri::AppHandle,
+    filename: String,
+    content: Vec<u8>,
+) -> Result<String, String> {
+    use tauri::Manager;
+    let download_dir = app_handle
+        .path()
+        .download_dir()
+        .map_err(|e| e.to_string())?;
+    let path = download_dir.join(filename);
+    std::fs::write(&path, content).map_err(|e| e.to_string())?;
+    Ok(path.to_string_lossy().to_string())
 }

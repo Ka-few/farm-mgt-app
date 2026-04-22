@@ -12,10 +12,12 @@ import Reports from "./modules/reports/Reports";
 import Customers from "./modules/customers/Customers";
 
 import { ToastProvider } from "./context/ToastContext";
+import ToastContainer from "./components/ToastContainer";
 
 function App() {
   return (
     <ToastProvider>
+      <ToastContainer />
       <Router>
         <Shell>
           <Routes>

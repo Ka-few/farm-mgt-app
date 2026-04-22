@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { FileText } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { useToast } from '../../context/ToastContext';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
     PieChart, Pie, Cell, LineChart, Line, ResponsiveContainer
@@ -11,6 +14,7 @@ const COLORS = ['#f59e0b', '#ef4444', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899'
 const HealthReport: React.FC = () => {
     const [records, setRecords] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const { addToast } = useToast();
 
     useEffect(() => { loadData(); }, []);
 
@@ -50,36 +54,63 @@ const HealthReport: React.FC = () => {
     const lineData = Object.entries(monthCostMap).map(([month, cost]) => ({ month, cost: parseFloat(cost.toFixed(2)) })).slice(-8);
 
     const exportPDF = async () => {
-        const { default: jsPDF } = await import('jspdf');
-        const { default: autoTable } = await import('jspdf-autotable');
-        const doc = new jsPDF();
+        try {
+            const jsPDFClass: any = (jsPDF as any).default || jsPDF;
+            const doc = new jsPDFClass();
 
-        doc.setFontSize(18);
-        doc.text('ShambaSmart FARM – Livestock Health Report', 14, 20);
-        doc.setFontSize(11);
-        doc.text(`Generated: ${new Date().toLocaleDateString('en-KE')}`, 14, 28);
-        doc.line(14, 30, 196, 30);
+            // Branding
+            doc.setFontSize(22);
+            doc.setTextColor(245, 158, 11); // Orange for Health
+            doc.text('SHAMBASMART', 105, 20, { align: 'center' });
 
-        doc.setFontSize(12);
-        doc.text(`Total Records:     ${records.length}`, 14, 40);
-        doc.text(`Total Vet Costs:   Kshs ${totalCost.toFixed(2)}`, 14, 48);
+            doc.setFontSize(16);
+            doc.setTextColor(74, 85, 80);
+            doc.text('LIVESTOCK HEALTH REPORT', 105, 30, { align: 'center' });
 
-        autoTable(doc, {
-            startY: 56,
-            head: [['Date', 'Animal', 'Type', 'Description', 'Next Visit', 'Cost (Kshs)']],
-            body: records.map(r => [
-                new Date(r.record_date).toLocaleDateString('en-KE'),
-                `${r.livestock_tag || '?'} ${r.livestock_name || ''}`,
-                r.record_type || '-',
-                r.description || '-',
-                r.next_visit ? new Date(r.next_visit).toLocaleDateString('en-KE') : '-',
-                (r.cost || 0).toFixed(2)
-            ]),
-            styles: { fontSize: 9 },
-            headStyles: { fillColor: [245, 158, 11] }
-        });
+            doc.setDrawColor(200, 200, 200);
+            doc.line(20, 35, 190, 35);
 
-        doc.save('health-report.pdf');
+            doc.setFontSize(11);
+            doc.setTextColor(100, 100, 100);
+            doc.text(`Generated: ${new Date().toLocaleDateString('en-KE')}`, 105, 42, { align: 'center' });
+
+            // Summary Info
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            doc.text(`Total Records:     ${records.length}`, 20, 55);
+            doc.text(`Total Vet Costs:   Kshs ${totalCost.toFixed(2)}`, 20, 63);
+
+            autoTable(doc, {
+                startY: 75,
+                head: [['Date', 'Animal', 'Type', 'Description', 'Next Visit', 'Cost (Kshs)']],
+                body: records.map(r => [
+                    new Date(r.record_date).toLocaleDateString('en-KE'),
+                    `${r.livestock_tag || '?'} ${r.livestock_name || ''}`,
+                    r.record_type || '-',
+                    r.description || '-',
+                    r.next_visit ? new Date(r.next_visit).toLocaleDateString('en-KE') : '-',
+                    (r.cost || 0).toFixed(2)
+                ]),
+                styles: { fontSize: 9 },
+                headStyles: { fillColor: [245, 158, 11] },
+                theme: 'grid'
+            });
+
+            const finalY = (doc as any).lastAutoTable?.finalY || 150;
+            doc.setFontSize(10);
+            doc.setTextColor(150, 150, 150);
+            doc.text('Computer-generated. Saved to Downloads folder.', 105, finalY + 20, { align: 'center' });
+
+            const pdfBytes = doc.output('arraybuffer');
+            await invoke('save_pdf', {
+                filename: 'Health_Report.pdf',
+                content: Array.from(new Uint8Array(pdfBytes))
+            });
+            addToast('Health Report saved to Downloads!', 'success');
+        } catch (err: any) {
+            console.error(err);
+            addToast('Failed to save report: ' + err.message, 'error');
+        }
     };
 
     return (

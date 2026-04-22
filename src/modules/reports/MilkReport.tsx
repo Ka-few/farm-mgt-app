@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { FileText } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { useToast } from '../../context/ToastContext';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
     LineChart, Line, PieChart, Pie, Cell, ResponsiveContainer
@@ -11,6 +14,7 @@ const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#ef4444'
 const MilkReport: React.FC = () => {
     const [logs, setLogs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const { addToast } = useToast();
 
     useEffect(() => { loadData(); }, []);
 
@@ -52,33 +56,61 @@ const MilkReport: React.FC = () => {
 
     // PDF export
     const exportPDF = async () => {
-        const { default: jsPDF } = await import('jspdf');
-        const { default: autoTable } = await import('jspdf-autotable');
-        const doc = new jsPDF();
+        try {
+            const jsPDFClass: any = (jsPDF as any).default || jsPDF;
+            const doc = new jsPDFClass();
 
-        doc.setFontSize(18);
-        doc.text('ShambaSmart FARM – Milk Production Report', 14, 20);
-        doc.setFontSize(11);
-        doc.text(`Generated: ${new Date().toLocaleDateString('en-KE')}`, 14, 28);
-        doc.line(14, 30, 196, 30);
+            // Branding
+            doc.setFontSize(22);
+            doc.setTextColor(59, 130, 246); // Blue for Milk/Production
+            doc.text('SHAMBASMART', 105, 20, { align: 'center' });
 
-        doc.setFontSize(12);
-        doc.text(`Total Production: ${totalMilk.toFixed(1)} Litres`, 14, 40);
-        doc.text(`Total Sessions:   ${logs.length}`, 14, 48);
+            doc.setFontSize(16);
+            doc.setTextColor(74, 85, 80);
+            doc.text('MILK PRODUCTION REPORT', 105, 30, { align: 'center' });
 
-        autoTable(doc, {
-            startY: 56,
-            head: [['Date', 'Tag', 'Name', 'Quantity (L)']],
-            body: logs.map(l => [
-                new Date(l.recorded_at).toLocaleDateString('en-KE'),
-                l.livestock_tag || '-',
-                l.livestock_name || '-',
-                l.quantity.toFixed(1)
-            ]),
-            styles: { fontSize: 9 },
-            headStyles: { fillColor: [59, 130, 246] }
-        });
-        doc.save('milk-report.pdf');
+            doc.setDrawColor(200, 200, 200);
+            doc.line(20, 35, 190, 35);
+
+            doc.setFontSize(11);
+            doc.setTextColor(100, 100, 100);
+            doc.text(`Generated: ${new Date().toLocaleDateString('en-KE')}`, 105, 42, { align: 'center' });
+
+            // Summary Info
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            doc.text(`Total Production: ${totalMilk.toFixed(1)} Litres`, 20, 55);
+            doc.text(`Total Sessions:   ${logs.length}`, 20, 63);
+
+            autoTable(doc, {
+                startY: 75,
+                head: [['Date', 'Tag', 'Name', 'Quantity (L)']],
+                body: logs.map(l => [
+                    new Date(l.recorded_at).toLocaleDateString('en-KE'),
+                    l.livestock_tag || '-',
+                    l.livestock_name || '-',
+                    l.quantity.toFixed(1)
+                ]),
+                styles: { fontSize: 9 },
+                headStyles: { fillColor: [59, 130, 246] },
+                theme: 'grid'
+            });
+
+            const finalY = (doc as any).lastAutoTable?.finalY || 150;
+            doc.setFontSize(10);
+            doc.setTextColor(150, 150, 150);
+            doc.text('Computer-generated. Saved to Downloads folder.', 105, finalY + 20, { align: 'center' });
+
+            const pdfBytes = doc.output('arraybuffer');
+            await invoke('save_pdf', {
+                filename: 'Milk_Production_Report.pdf',
+                content: Array.from(new Uint8Array(pdfBytes))
+            });
+            addToast('Milk Report saved to Downloads!', 'success');
+        } catch (err: any) {
+            console.error(err);
+            addToast('Failed to save report: ' + err.message, 'error');
+        }
     };
 
     return (

@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { FileText } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { useToast } from '../../context/ToastContext';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
     PieChart, Pie, Cell, ResponsiveContainer
@@ -12,6 +15,7 @@ const WorkersReport: React.FC = () => {
     const [workers, setWorkers] = useState<any[]>([]);
     const [laborLogs, setLaborLogs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const { addToast } = useToast();
 
     useEffect(() => { loadData(); }, []);
 
@@ -50,30 +54,62 @@ const WorkersReport: React.FC = () => {
     const workerCostBarData = Object.entries(workerCostMap).map(([name, cost]) => ({ name, cost: parseFloat(cost.toFixed(2)) })).sort((a, b) => b.cost - a.cost).slice(0, 8);
 
     const exportPDF = async () => {
-        const { default: jsPDF } = await import('jspdf');
-        const { default: autoTable } = await import('jspdf-autotable');
-        const doc = new jsPDF();
+        try {
+            const jsPDFClass: any = (jsPDF as any).default || jsPDF;
+            const doc = new jsPDFClass();
 
-        doc.setFontSize(18);
-        doc.text('ShambaSmart FARM – Workers & Labor Report', 14, 20);
-        doc.setFontSize(11);
-        doc.text(`Generated: ${new Date().toLocaleDateString('en-KE')}`, 14, 28);
-        doc.line(14, 30, 196, 30);
+            // Branding
+            doc.setFontSize(22);
+            doc.setTextColor(31, 111, 67); // Green for Workers
+            doc.text('SHAMBASMART', 105, 20, { align: 'center' });
 
-        doc.setFontSize(12);
-        doc.text(`Active Workers:   ${activeWorkers.length} / ${workers.length}`, 14, 40);
-        doc.text(`Avg Daily Rate:   Kshs ${averageWage.toFixed(2)}`, 14, 48);
-        doc.text(`Total Labor Cost: Kshs ${totalLaborCost.toFixed(2)}`, 14, 56);
+            doc.setFontSize(16);
+            doc.setTextColor(74, 85, 80);
+            doc.text('WORKERS & LABOR REPORT', 105, 30, { align: 'center' });
 
-        autoTable(doc, {
-            startY: 64,
-            head: [['Name', 'Role', 'Status', 'Daily Rate (Kshs)']],
-            body: workers.map(w => [w.name, w.role || '-', (w.is_active === 1 || w.is_active) ? 'Active' : 'Inactive', (w.daily_rate || 0).toFixed(2)]),
-            styles: { fontSize: 9 },
-            headStyles: { fillColor: [59, 130, 246] }
-        });
+            doc.setDrawColor(200, 200, 200);
+            doc.line(20, 35, 190, 35);
 
-        doc.save('workers-report.pdf');
+            doc.setFontSize(11);
+            doc.setTextColor(100, 100, 100);
+            doc.text(`Generated: ${new Date().toLocaleDateString('en-KE')}`, 105, 42, { align: 'center' });
+
+            // Stats info
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            doc.text(`Active Workers:   ${activeWorkers.length} / ${workers.length}`, 20, 55);
+            doc.text(`Avg Daily Rate:   Kshs ${averageWage.toFixed(2)}`, 20, 63);
+            doc.text(`Total Labor Cost: Kshs ${totalLaborCost.toFixed(2)}`, 20, 71);
+
+            autoTable(doc, {
+                startY: 80,
+                head: [['Name', 'Role', 'Status', 'Daily Rate (Kshs)']],
+                body: workers.map(w => [
+                    w.name,
+                    w.role || '-',
+                    (w.is_active === 1 || w.is_active) ? 'Active' : 'Inactive',
+                    (w.daily_rate || 0).toFixed(2)
+                ]),
+                styles: { fontSize: 9 },
+                headStyles: { fillColor: [31, 111, 67] },
+                theme: 'grid'
+            });
+
+            const finalY = (doc as any).lastAutoTable?.finalY || 150;
+            doc.setFontSize(10);
+            doc.setTextColor(150, 150, 150);
+            doc.text('Computer-generated. Saved to Downloads folder.', 105, finalY + 20, { align: 'center' });
+
+            const pdfBytes = doc.output('arraybuffer');
+            await invoke('save_pdf', {
+                filename: 'Workers_Report.pdf',
+                content: Array.from(new Uint8Array(pdfBytes))
+            });
+            addToast('Workers Report saved to Downloads!', 'success');
+        } catch (err: any) {
+            console.error(err);
+            addToast('Failed to save report: ' + err.message, 'error');
+        }
     };
 
     return (

@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { FileText, TrendingUp, Users, ShoppingBag } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { useToast } from '../../context/ToastContext';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell
@@ -12,6 +15,7 @@ const CRMReport: React.FC = () => {
     const [customers, setCustomers] = useState<any[]>([]);
     const [orders, setOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const { addToast } = useToast();
 
     useEffect(() => { loadData(); }, []);
 
@@ -49,29 +53,62 @@ const CRMReport: React.FC = () => {
     const statusPieData = Object.entries(statusMap).map(([name, value]) => ({ name, value }));
 
     const exportPDF = async () => {
-        const { default: jsPDF } = await import('jspdf');
-        const { default: autoTable } = await import('jspdf-autotable');
-        const doc = new jsPDF();
+        try {
+            const jsPDFClass: any = (jsPDF as any).default || jsPDF;
+            const doc = new jsPDFClass();
 
-        doc.setFontSize(18);
-        doc.text('ShambaSmart FARM – CRM & Sales Report', 14, 20);
-        doc.setFontSize(11);
-        doc.text(`Generated: ${new Date().toLocaleDateString('en-KE')}`, 14, 28);
-        doc.line(14, 30, 196, 30);
+            // Branding
+            doc.setFontSize(22);
+            doc.setTextColor(16, 185, 129); // Green for CRM
+            doc.text('SHAMBASMART', 105, 20, { align: 'center' });
 
-        doc.text(`Total Customers: ${customers.length}`, 14, 40);
-        doc.text(`Total Orders: ${orders.length}`, 14, 48);
-        doc.text(`Total Revenue: Kshs ${orders.reduce((s, o) => s + o.total_amount, 0).toLocaleString()}`, 14, 56);
+            doc.setFontSize(16);
+            doc.setTextColor(74, 85, 80);
+            doc.text('CRM & SALES REPORT', 105, 30, { align: 'center' });
 
-        autoTable(doc, {
-            startY: 64,
-            head: [['Customer', 'Order Date', 'Amount', 'Status']],
-            body: orders.map(o => [o.customer_name, new Date(o.order_date).toLocaleDateString(), `Kshs ${o.total_amount.toFixed(2)}`, o.status]),
-            styles: { fontSize: 9 },
-            headStyles: { fillColor: [16, 185, 129] }
-        });
+            doc.setDrawColor(200, 200, 200);
+            doc.line(20, 35, 190, 35);
 
-        doc.save('crm-report.pdf');
+            doc.setFontSize(11);
+            doc.setTextColor(100, 100, 100);
+            doc.text(`Generated: ${new Date().toLocaleDateString('en-KE')}`, 105, 42, { align: 'center' });
+
+            // Summary Info
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            doc.text(`Total Customers: ${customers.length}`, 20, 55);
+            doc.text(`Total Orders: ${orders.length}`, 20, 63);
+            doc.text(`Total Revenue: Kshs ${orders.reduce((s, o) => s + o.total_amount, 0).toLocaleString()}`, 20, 71);
+
+            autoTable(doc, {
+                startY: 80,
+                head: [['Customer', 'Order Date', 'Amount (Kshs)', 'Status']],
+                body: orders.map(o => [
+                    o.customer_name,
+                    new Date(o.order_date).toLocaleDateString('en-KE'),
+                    o.total_amount.toLocaleString(undefined, { minimumFractionDigits: 2 }),
+                    o.status
+                ]),
+                styles: { fontSize: 9 },
+                headStyles: { fillColor: [16, 185, 129] },
+                theme: 'grid'
+            });
+
+            const finalY = (doc as any).lastAutoTable?.finalY || 150;
+            doc.setFontSize(10);
+            doc.setTextColor(150, 150, 150);
+            doc.text('Computer-generated. Saved to Downloads folder.', 105, finalY + 20, { align: 'center' });
+
+            const pdfBytes = doc.output('arraybuffer');
+            await invoke('save_pdf', {
+                filename: 'CRM_Sales_Report.pdf',
+                content: Array.from(new Uint8Array(pdfBytes))
+            });
+            addToast('CRM Report saved to Downloads!', 'success');
+        } catch (err: any) {
+            console.error(err);
+            addToast('Failed to save report: ' + err.message, 'error');
+        }
     };
 
     return (

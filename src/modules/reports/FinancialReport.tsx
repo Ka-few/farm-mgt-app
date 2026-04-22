@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { FileText } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { useToast } from '../../context/ToastContext';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
     PieChart, Pie, Cell, LineChart, Line, ResponsiveContainer
@@ -12,6 +15,7 @@ const FinancialReport: React.FC = () => {
     const [records, setRecords] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const reportRef = useRef<HTMLDivElement>(null);
+    const { addToast } = useToast();
 
     useEffect(() => { loadData(); }, []);
 
@@ -58,40 +62,66 @@ const FinancialReport: React.FC = () => {
 
     // ---- PDF Export ----
     const exportPDF = async () => {
-        const { default: jsPDF } = await import('jspdf');
-        const { default: autoTable } = await import('jspdf-autotable');
-        const doc = new jsPDF();
+        try {
+            const jsPDFClass: any = (jsPDF as any).default || jsPDF;
+            const doc = new jsPDFClass();
 
-        doc.setFontSize(18);
-        doc.text('ShambaSmart FARM – Financial Report', 14, 20);
-        doc.setFontSize(11);
-        doc.text(`Generated: ${new Date().toLocaleDateString('en-KE')}`, 14, 28);
-        doc.setLineWidth(0.3);
-        doc.line(14, 30, 196, 30);
+            // Branding
+            doc.setFontSize(22);
+            doc.setTextColor(59, 130, 246); // Blue for Finance
+            doc.text('SHAMBASMART', 105, 20, { align: 'center' });
 
-        // Summary
-        doc.setFontSize(12);
-        doc.text(`Total Income:   Kshs ${income.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 14, 40);
-        doc.text(`Total Expenses: Kshs ${expenses.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 14, 48);
-        doc.setTextColor(balance >= 0 ? '#10b981' : '#ef4444');
-        doc.text(`Net Balance:    Kshs ${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 14, 56);
-        doc.setTextColor('#000000');
+            doc.setFontSize(16);
+            doc.setTextColor(74, 85, 80);
+            doc.text('FINANCIAL PERFORMANCE REPORT', 105, 30, { align: 'center' });
 
-        autoTable(doc, {
-            startY: 64,
-            head: [['Date', 'Category', 'Description', 'Type', 'Amount (Kshs)']],
-            body: records.map(r => [
-                new Date(r.date).toLocaleDateString('en-KE'),
-                r.category,
-                r.description || '-',
-                r.record_type.toUpperCase(),
-                r.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })
-            ]),
-            styles: { fontSize: 9 },
-            headStyles: { fillColor: [59, 130, 246] }
-        });
+            doc.setDrawColor(200, 200, 200);
+            doc.line(20, 35, 190, 35);
 
-        doc.save('financial-report.pdf');
+            doc.setFontSize(11);
+            doc.setTextColor(100, 100, 100);
+            doc.text(`Generated: ${new Date().toLocaleDateString('en-KE')}`, 105, 42, { align: 'center' });
+
+            // Summary Info
+            doc.setFontSize(12);
+            doc.setTextColor(0, 0, 0);
+            doc.text(`Total Income:   Kshs ${income.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 20, 55);
+            doc.text(`Total Expenses: Kshs ${expenses.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 20, 63);
+
+            const balanceColor = balance >= 0 ? [16, 185, 129] : [239, 68, 68];
+            doc.setTextColor(balanceColor[0], balanceColor[1], balanceColor[2]);
+            doc.text(`Net Balance:    Kshs ${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 20, 71);
+
+            autoTable(doc, {
+                startY: 80,
+                head: [['Date', 'Category', 'Description', 'Type', 'Amount (Kshs)']],
+                body: records.map(r => [
+                    new Date(r.date).toLocaleDateString('en-KE'),
+                    r.category,
+                    r.description || '-',
+                    r.record_type.toUpperCase(),
+                    r.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })
+                ]),
+                styles: { fontSize: 9 },
+                headStyles: { fillColor: [59, 130, 246] },
+                theme: 'grid'
+            });
+
+            const finalY = (doc as any).lastAutoTable?.finalY || 150;
+            doc.setFontSize(10);
+            doc.setTextColor(150, 150, 150);
+            doc.text('Computer-generated. Saved to Downloads folder.', 105, finalY + 20, { align: 'center' });
+
+            const pdfBytes = doc.output('arraybuffer');
+            await invoke('save_pdf', {
+                filename: 'Financial_Report.pdf',
+                content: Array.from(new Uint8Array(pdfBytes))
+            });
+            addToast('Financial Report saved to Downloads!', 'success');
+        } catch (err: any) {
+            console.error(err);
+            addToast('Failed to save report: ' + err.message, 'error');
+        }
     };
 
     return (
