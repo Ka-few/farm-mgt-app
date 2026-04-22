@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Map, Home, Trash2, Edit2 } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
+import { useToast } from '../../context/ToastContext';
 import '../../styles/Forms.css';
 
 interface Farm {
@@ -29,6 +30,7 @@ const FarmSetup: React.FC = () => {
     const [plotUnit, setPlotUnit] = useState('Acres');
     const [loading, setLoading] = useState(false);
     const [editingPlot, setEditingPlot] = useState<Plot | null>(null);
+    const { addToast } = useToast();
 
     const loadFarmData = async () => {
         try {
@@ -59,11 +61,11 @@ const FarmSetup: React.FC = () => {
                 name: farmName,
                 currency
             });
-            alert('Farm profile updated!');
+            addToast('Farm profile updated!', 'success');
             loadFarmData();
         } catch (err) {
             console.error(err);
-            alert('Error updating farm profile');
+            addToast('Error updating farm profile', 'error');
         } finally {
             setLoading(false);
         }
@@ -85,10 +87,10 @@ const FarmSetup: React.FC = () => {
             setPlotName('');
             setPlotSize('');
             loadFarmData();
-            alert('Plot/Greenhouse added!');
+            addToast('Plot/Greenhouse added!', 'success');
         } catch (err) {
             console.error(err);
-            alert('Error adding plot');
+            addToast('Error adding plot', 'error');
         }
     };
 
@@ -99,7 +101,7 @@ const FarmSetup: React.FC = () => {
             loadFarmData();
         } catch (err) {
             console.error(err);
-            alert('Error deleting plot');
+            addToast('Error deleting plot', 'error');
         }
     };
 
@@ -117,10 +119,10 @@ const FarmSetup: React.FC = () => {
             });
             setEditingPlot(null);
             loadFarmData();
-            alert('Plot updated!');
+            addToast('Plot updated!', 'success');
         } catch (err) {
             console.error(err);
-            alert('Failed to update plot');
+            addToast('Failed to update plot', 'error');
         }
     };
 
