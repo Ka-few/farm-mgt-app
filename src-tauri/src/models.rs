@@ -293,3 +293,11 @@ pub struct Order {
     pub status: String,
     pub payment_status: String,
 }
+
+/* Balance Sheet */
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BalanceSheetEntry {
+    pub account_name: String,
+    pub amount: f64,
+    pub updated_at: Option<String>,
+}

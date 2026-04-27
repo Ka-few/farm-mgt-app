@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { ListTodo, Plus, Calendar, User, Clock, CheckCircle2, Circle, Activity } from 'lucide-react';
+import { ListTodo, Plus, User, Clock, Circle, Activity } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 
 interface Task {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Calendar, CheckCircle, Clock, Plus, BarChart3, ChevronRight, Activity } from 'lucide-react';
+import { Calendar, CheckCircle, Clock, Plus } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 
 interface CropCycle {

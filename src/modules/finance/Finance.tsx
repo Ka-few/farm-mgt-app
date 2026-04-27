@@ -1,18 +1,22 @@
 import React, { useState } from 'react';
 import FinanceOverview from './FinanceOverview';
+import ProductionStatement from './ProductionStatement';
 import FinanceIncome from './FinanceIncome';
 import FinanceExpenses from './FinanceExpenses';
 import Budgets from './Budgets';
-import { DollarSign, ArrowUpRight, ArrowDownRight, Target } from 'lucide-react';
+import BalanceSheet from './BalanceSheet';
+import { DollarSign, ArrowUpRight, ArrowDownRight, Target, Landmark, TrendingUp } from 'lucide-react';
 
 const Finance: React.FC = () => {
     const [activeTab, setActiveTab] = useState('overview');
 
     const tabs = [
-        { id: 'overview', label: 'Overview & Reports', icon: <DollarSign size={18} /> },
-        { id: 'income', label: 'Income (Products)', icon: <ArrowUpRight size={18} /> },
-        { id: 'expenses', label: 'Expenses (Inputs)', icon: <ArrowDownRight size={18} /> },
-        { id: 'budgets', label: 'Budgeting', icon: <Target size={18} /> }
+        { id: 'overview', label: 'Dashboard', icon: <DollarSign size={18} /> },
+        { id: 'production', label: 'Production & Income', icon: <TrendingUp size={18} /> },
+        { id: 'income', label: 'Income Records', icon: <ArrowUpRight size={18} /> },
+        { id: 'expenses', label: 'Expense Records', icon: <ArrowDownRight size={18} /> },
+        { id: 'budgets', label: 'Budgeting', icon: <Target size={18} /> },
+        { id: 'balance_sheet', label: 'Balance Sheet', icon: <Landmark size={18} /> }
     ];
 
     return (
@@ -45,9 +49,11 @@ const Finance: React.FC = () => {
 
             <div className="tab-content">
                 {activeTab === 'overview' && <FinanceOverview />}
+                {activeTab === 'production' && <ProductionStatement />}
                 {activeTab === 'income' && <FinanceIncome />}
                 {activeTab === 'expenses' && <FinanceExpenses />}
                 {activeTab === 'budgets' && <Budgets />}
+                {activeTab === 'balance_sheet' && <BalanceSheet />}
             </div>
         </div>
     );

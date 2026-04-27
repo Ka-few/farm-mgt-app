@@ -347,6 +347,13 @@ pub fn establish_connection(app: &AppHandle) -> Connection {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(order_id) REFERENCES orders(id)
         );
+
+        /* Balance Sheet Accounts */
+        CREATE TABLE IF NOT EXISTS balance_sheet_entries (
+            account_name TEXT PRIMARY KEY,
+            amount REAL NOT NULL DEFAULT 0.0,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
     ").expect("Failed to initialize database schema");
 
     // Add session columns if they don't exist (handle legacy databases)

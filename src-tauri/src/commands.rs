@@ -1,8 +1,8 @@
 use crate::db::DbState;
 use crate::models::{
-    Attendance, Budget, BudgetItem, Crop, CropCycle, CropStage, Customer, DailyLog, Farm,
-    FinanceRecord, Input, InputUsage, IrrigationRecord, Order, Payroll, Plot, Task, Worker,
-    YieldRecord,
+    Attendance, BalanceSheetEntry, Budget, BudgetItem, Crop, CropCycle, CropStage, Customer,
+    DailyLog, Farm, FinanceRecord, Input, InputUsage, IrrigationRecord, Order, Payroll, Plot, Task,
+    Worker, YieldRecord,
 };
 use rusqlite::{params, OptionalExtension};
 use tauri::State;
@@ -2283,4 +2283,45 @@ pub fn save_pdf(
     let path = download_dir.join(filename);
     std::fs::write(&path, content).map_err(|e| e.to_string())?;
     Ok(path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub fn get_balance_sheet(state: State<DbState>) -> Result<Vec<BalanceSheetEntry>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare("SELECT account_name, amount, updated_at FROM balance_sheet_entries")
+        .map_err(|e| e.to_string())?;
+
+    let iter = stmt
+        .query_map([], |row| {
+            Ok(BalanceSheetEntry {
+                account_name: row.get(0)?,
+                amount: row.get(1)?,
+                updated_at: row.get(2)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut list = Vec::new();
+    for item in iter {
+        list.push(item.map_err(|e| e.to_string())?);
+    }
+    Ok(list)
+}
+
+#[tauri::command]
+pub fn update_balance_sheet_entry(
+    state: State<DbState>,
+    account_name: String,
+    amount: f64,
+) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "INSERT INTO balance_sheet_entries (account_name, amount) 
+         VALUES (?1, ?2) 
+         ON CONFLICT(account_name) DO UPDATE SET amount = ?2, updated_at = CURRENT_TIMESTAMP",
+        params![account_name, amount],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
 }

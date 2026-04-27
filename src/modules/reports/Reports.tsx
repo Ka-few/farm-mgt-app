@@ -5,7 +5,7 @@ import HealthReport from './HealthReport';
 import CropsReport from './CropsReport';
 import WorkersReport from './WorkersReport';
 import CRMReport from './CRMReport';
-import { FileText, Wallet, Milk, Heart, Sprout, Users, Contact2 } from 'lucide-react';
+import { Wallet, Milk, Heart, Sprout, Users, Contact2 } from 'lucide-react';
 
 const Reports: React.FC = () => {
     const [activeTab, setActiveTab] = useState('financial');

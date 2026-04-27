@@ -107,7 +107,9 @@ pub fn run() {
             commands::get_orders,
             commands::add_order,
             commands::chat_with_ai,
-            commands::save_pdf
+            commands::save_pdf,
+            commands::get_balance_sheet,
+            commands::update_balance_sheet_entry
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

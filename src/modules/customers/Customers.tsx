@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Users, Plus, ShoppingCart, UserPlus, Phone, MapPin, Mail, Search, CheckCircle, Clock, Edit2, Trash2, CreditCard } from 'lucide-react';
+import { Users, Plus, ShoppingCart, UserPlus, Phone, MapPin, Mail, Edit2, Trash2, CreditCard } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 
 interface Customer {

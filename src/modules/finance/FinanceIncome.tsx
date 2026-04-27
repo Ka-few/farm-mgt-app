@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { ArrowUpRight, CheckCircle2, Plus, Trash2 } from 'lucide-react';
+import { ArrowUpRight, Plus, Trash2 } from 'lucide-react';
 import '../../styles/Forms.css';
 
 interface Transaction {
@@ -85,11 +85,14 @@ const FinanceIncome: React.FC = () => {
                     <div className="input-group">
                         <label>Product Sold</label>
                         <select value={category} onChange={(e) => setCategory(e.target.value)}>
-                            <option value="Milk Sales">Milk (Dairy)</option>
-                            <option value="Egg Sales">Eggs (Poultry)</option>
-                            <option value="Meat Sales">Meat / Livestock</option>
-                            <option value="Crop Sales">Crops / Produce</option>
-                            <option value="Other Income">Other Income</option>
+                            <option value="Sales Revenue">Sales Revenue (Produce/Livestock)</option>
+                            <option value="Service Revenue">Service Revenue (Leasing/Hire)</option>
+                            <option value="Contract Revenue">Contract Revenue</option>
+                            <option value="Other Operating Revenue">Other Operating Revenue</option>
+                            <option value="Interest Income">Interest Income</option>
+                            <option value="Dividend Income">Dividend Income</option>
+                            <option value="Rental Income">Rental Income</option>
+                            <option value="Other Non-operating Revenue">Other Non-operating Revenue</option>
                         </select>
                     </div>
                     <div className="input-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>

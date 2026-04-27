@@ -91,20 +91,32 @@ const FinanceExpenses: React.FC = () => {
                         <label>Input Category</label>
                         <select value={category} onChange={(e) => {
                             setCategory(e.target.value);
-                            if (e.target.value !== 'Feeds' && e.target.value !== 'Veterinary/Medicine') {
+                            if (e.target.value !== 'Feeds' && e.target.value !== 'Veterinary & Medicine') {
                                 setLinkedEntityId('');
                             }
                         }}>
-                            <option value="Feeds">Feeds & Nutrition (e.g. Dairy Meal)</option>
-                            <option value="Veterinary/Medicine">Veterinary & Medicine</option>
+                            <option value="Feeds">Feeds & Nutrition</option>
+                            <option value="Veterinary & Medicine">Veterinary & Medicine</option>
                             <option value="Maintenance">Maintenance & Repairs</option>
-                            <option value="Labor">Labor/Wages</option>
-                            <option value="Utilities">Water & Electricity Utilities</option>
-                            <option value="Other Expense">Other Expense</option>
+                            <option value="Salaries & Advances">Salaries & Advances</option>
+                            <option value="Stipend & Commissions">Stipend & Commissions</option>
+                            <option value="Electricity">Electricity</option>
+                            <option value="Water">Water Supply</option>
+                            <option value="Packaging">Packaging</option>
+                            <option value="Transport">Transport</option>
+                            <option value="Rent">Rent</option>
+                            <option value="Airtime">Airtime</option>
+                            <option value="Stationeries">Stationeries</option>
+                            <option value="Office Supplies & Sundries">Office Supplies & Sundries</option>
+                            <option value="Marketing">Marketing</option>
+                            <option value="Trading Licence">Trading Licence</option>
+                            <option value="Staff Welfare & CSR">Staff Welfare & CSR</option>
+                            <option value="Other Financial Expenses">Other Financial Expenses</option>
+                            <option value="Other Expense">Other Expenses</option>
                         </select>
                     </div>
 
-                    {(category === 'Feeds' || category === 'Veterinary/Medicine') && (
+                    {(category === 'Feeds' || category === 'Veterinary & Medicine') && (
                         <div className="input-group" style={{ padding: '0.8rem', background: 'rgba(59, 130, 246, 0.05)', borderRadius: 'var(--radius-sm)', border: '1px dashed var(--accent-primary)' }}>
                             <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--accent-primary)' }}><LinkIcon size={14} /> Link to Dependant Group (Optional)</label>
                             <select value={linkedEntityId} onChange={(e) => setLinkedEntityId(e.target.value)} style={{ background: 'var(--bg-card)' }}>
