@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Save, RefreshCw, TrendingUp, TrendingDown, Landmark } from 'lucide-react';
+import { Save, RefreshCw, TrendingUp, TrendingDown, Landmark, Plus, Trash2 } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
 
 interface BalanceEntry {
@@ -9,9 +9,17 @@ interface BalanceEntry {
     updated_at?: string;
 }
 
+interface AccountRow {
+    key: string;
+    originalName?: string;
+    account_name: string;
+    amount: number;
+}
+
 const BalanceSheet: React.FC = () => {
     const { addToast } = useToast();
-    const [entries, setEntries] = useState<Record<string, number>>({});
+    const [rows, setRows] = useState<AccountRow[]>([]);
+    const [rowsToDelete, setRowsToDelete] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
 
@@ -19,11 +27,14 @@ const BalanceSheet: React.FC = () => {
         setLoading(true);
         try {
             const data = await invoke<BalanceEntry[]>('get_balance_sheet');
-            const entryMap: Record<string, number> = {};
-            data.forEach(e => {
-                entryMap[e.account_name] = e.amount;
-            });
-            setEntries(entryMap);
+            const rowList: AccountRow[] = data.map((e, idx) => ({
+                key: `${e.account_name}-${idx}`,
+                originalName: e.account_name,
+                account_name: e.account_name,
+                amount: e.amount,
+            }));
+            setRows(rowList.length ? rowList : [{ key: 'new-0', account_name: '', amount: 0 }] );
+            setRowsToDelete([]);
         } catch (err) {
             console.error(err);
             addToast('Failed to load balance sheet data', 'error');
@@ -36,28 +47,106 @@ const BalanceSheet: React.FC = () => {
         loadData();
     }, []);
 
-    const handleChange = (account: string, value: string) => {
-        const numValue = parseFloat(value) || 0;
-        setEntries(prev => ({ ...prev, [account]: numValue }));
+    const handleRowChange = (key: string, field: 'account_name' | 'amount', value: string) => {
+        setRows(prev => prev.map(row => {
+            if (row.key !== key) return row;
+            return {
+                ...row,
+                account_name: field === 'account_name' ? value : row.account_name,
+                amount: field === 'amount' ? parseFloat(value) || 0 : row.amount,
+            };
+        }));
     };
 
+    const handleAddRow = () => {
+        setRows(prev => [...prev, { key: `new-${Date.now()}`, account_name: '', amount: 0 }]);
+    };
+
+    const handleDeleteRow = (key: string) => {
+        setRows(prev => {
+            const row = prev.find(r => r.key === key);
+            if (row?.originalName) {
+                setRowsToDelete(prevDelete => [...prevDelete, row.originalName!]);
+            }
+            return prev.filter(r => r.key !== key);
+        });
+    };
+
+    const duplicateAccountNames = Array.from(
+        new Set(
+            rows
+                .map(row => row.account_name.trim())
+                .filter((name, index, arr) => name && arr.indexOf(name) !== index)
+        )
+    );
+    const hasDuplicateNames = duplicateAccountNames.length > 0;
+
     const handleSave = async () => {
+        const normalizedRows = rows.map(row => ({ ...row, account_name: row.account_name.trim() }));
+        if (normalizedRows.some(row => !row.account_name)) {
+            addToast('All account rows must have a name', 'error');
+            return;
+        }
+
+        const accountNames = normalizedRows.map(row => row.account_name);
+        const duplicates = accountNames.filter((name, index) => accountNames.indexOf(name) !== index);
+        if (duplicates.length) {
+            addToast('Duplicate account names are not allowed', 'error');
+            return;
+        }
+
         setSaving(true);
         try {
-            for (const [account, amount] of Object.entries(entries)) {
-                await invoke('update_balance_sheet_entry', { accountName: account, amount });
+            for (const accountName of rowsToDelete) {
+                await invoke('delete_balance_sheet_entry', { accountName });
             }
-            addToast('Balance sheet updated successfully', 'success');
+
+            for (const row of normalizedRows) {
+                await invoke('update_balance_sheet_entry', {
+                    accountName: row.account_name,
+                    amount: row.amount,
+                });
+            }
+
+            addToast('Chart of accounts saved successfully', 'success');
+            await loadData();
         } catch (err) {
             console.error(err);
-            addToast('Error saving balance sheet', 'error');
+            addToast('Error saving chart of accounts', 'error');
         } finally {
             setSaving(false);
         }
     };
 
-    // Calculation Helpers
-    const getVal = (key: string) => entries[key] || 0;
+    const handleValueChange = (account: string, value: string) => {
+        const amount = parseFloat(value) || 0;
+        setRows(prev => {
+            const existingIndex = prev.findIndex(row => row.account_name === account);
+            if (existingIndex >= 0) {
+                const next = [...prev];
+                next[existingIndex] = { ...next[existingIndex], amount };
+                return next;
+            }
+            return [
+                ...prev,
+                {
+                    key: `new-${Date.now()}`,
+                    originalName: account,
+                    account_name: account,
+                    amount,
+                },
+            ];
+        });
+    };
+
+    const accountMap: Record<string, number> = rows.reduce((map, row) => {
+        if (row.account_name.trim()) {
+            map[row.account_name] = row.amount;
+        }
+        return map;
+    }, {} as Record<string, number>);
+
+    const getVal = (key: string) => accountMap[key] || 0;
 
     const totalCurrentAssets = getVal('Cash at Bank') + getVal('Accounts Receivable') + getVal('Inventory - Crops') + getVal('Inventory - Livestock Feed') + getVal('Produced Goods Stock') + getVal('Prepaid Expenses');
     const totalNonCurrentAssets = getVal('Land') + getVal('Buildings') + getVal('Farm Machinery Cost') - getVal('Less: Accumulated Depreciation') + getVal('Breeding Livestock') + getVal('Orchards/Plantations');
@@ -78,8 +167,8 @@ const BalanceSheet: React.FC = () => {
             <input
                 type="number"
                 step="0.01"
-                value={entries[label] === undefined ? '' : entries[label]}
-                onChange={(e) => handleChange(label, e.target.value)}
+                value={accountMap[label] === undefined ? '' : accountMap[label]}
+                onChange={(e) => handleValueChange(label, e.target.value)}
                 placeholder="0.00"
                 style={{
                     width: '120px',
@@ -128,6 +217,80 @@ const BalanceSheet: React.FC = () => {
                         <Save size={18} /> {saving ? 'Saving...' : 'Save Changes'}
                     </button>
                 </div>
+            </div>
+
+            <div className="glass" style={{ padding: '1.5rem', borderRadius: 'var(--radius-lg)', marginBottom: '2rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <div>
+                        <h4 style={{ margin: 0 }}>Chart of Accounts</h4>
+                        <p className="subtitle" style={{ margin: '0.25rem 0 0' }}>Add, update, or remove balance sheet accounts directly.</p>
+                    </div>
+                    <button className="button-secondary" onClick={handleAddRow}>
+                        <Plus size={16} /> Add Account
+                    </button>
+                </div>
+
+                <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '620px' }}>
+                        <thead>
+                            <tr>
+                                <th style={{ textAlign: 'left', padding: '0.75rem 0.5rem', borderBottom: '1px solid var(--glass-border)' }}>Account Name</th>
+                                <th style={{ textAlign: 'right', padding: '0.75rem 0.5rem', borderBottom: '1px solid var(--glass-border)' }}>Amount</th>
+                                <th style={{ width: '80px', textAlign: 'center', padding: '0.75rem 0.5rem', borderBottom: '1px solid var(--glass-border)' }}>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {rows.length === 0 ? (
+                                <tr>
+                                    <td colSpan={3} style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-secondary)' }}>
+                                        No chart of accounts entries yet. Add a new account to begin.
+                                    </td>
+                                </tr>
+                            ) : (
+                                rows.map(row => (
+                                    <tr key={row.key}>
+                                        <td style={{ padding: '0.5rem' }}>
+                                            <input
+                                                type="text"
+                                                value={row.account_name}
+                                                onChange={(e) => handleRowChange(row.key, 'account_name', e.target.value)}
+                                                placeholder="e.g. Cash at Bank"
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '0.65rem',
+                                                    border: duplicateAccountNames.includes(row.account_name.trim()) ? '1px solid var(--accent-danger)' : '1px solid var(--glass-border)',
+                                                    borderRadius: '6px',
+                                                    background: 'var(--bg-input)',
+                                                }}
+                                            />
+                                        </td>
+                                        <td style={{ padding: '0.5rem' }}>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                value={row.amount}
+                                                onChange={(e) => handleRowChange(row.key, 'amount', e.target.value)}
+                                                placeholder="0.00"
+                                                style={{ width: '100%', padding: '0.65rem', border: '1px solid var(--glass-border)', borderRadius: '6px', background: 'var(--bg-input)', textAlign: 'right' }}
+                                            />
+                                        </td>
+                                        <td style={{ padding: '0.5rem', textAlign: 'center' }}>
+                                            <button className="btn-icon danger" onClick={() => handleDeleteRow(row.key)}>
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+                {hasDuplicateNames && (
+                    <div style={{ marginTop: '1rem', color: 'var(--accent-danger)', fontWeight: 600 }}>
+                        Duplicate account names detected: {duplicateAccountNames.join(', ')}. Please use unique account names.
+                    </div>
+                )}
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>

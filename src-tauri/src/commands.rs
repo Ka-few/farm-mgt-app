@@ -2325,3 +2325,17 @@ pub fn update_balance_sheet_entry(
     .map_err(|e| e.to_string())?;
     Ok(())
 }
+
+#[tauri::command]
+pub fn delete_balance_sheet_entry(
+    state: State<DbState>,
+    account_name: String,
+) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    conn.execute(
+        "DELETE FROM balance_sheet_entries WHERE account_name = ?1",
+        params![account_name],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
