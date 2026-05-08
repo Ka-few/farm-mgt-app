@@ -1,12 +1,16 @@
 use crate::db::DbState;
 use crate::models::{
-    Attendance, BalanceSheetEntry, Budget, BudgetItem, Crop, CropCycle, CropStage, Customer,
-    DailyLog, Farm, FinanceRecord, Input, InputUsage, IrrigationRecord, Order, Payroll, Plot, Task,
-    Worker, YieldRecord,
+    Attendance, Account, BalanceSheetEntry, Budget, BudgetItem, Crop, CropCycle, CropStage, Customer,
+    DailyLog, Farm, FinanceRecord, Input, InputUsage, IrrigationRecord, JournalEntry, JournalEntryLine, LedgerEntry,
+    Order, Payroll, Plot, Task, Worker, YieldRecord,
 };
-use rusqlite::{params, OptionalExtension};
+use rusqlite::{params, Connection, OptionalExtension};
 use tauri::State;
 use uuid::Uuid;
+use std::sync::{Mutex, OnceLock};
+
+static ACCOUNTING_BACKFILLED: OnceLock<Mutex<bool>> = OnceLock::new();
+static ACCOUNTING_DIRTY: OnceLock<Mutex<bool>> = OnceLock::new();
 
 #[tauri::command]
 pub fn get_workers(state: State<DbState>) -> Result<Vec<Worker>, String> {
@@ -93,6 +97,7 @@ pub fn record_labor(
         "INSERT INTO finance_records (id, type, category, amount, date, description, linked_entity_type, linked_entity_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
         params![finance_id, "expense", "Labor", amount, date, description, "labor_records", id],
     ).map_err(|e| e.to_string())?;
+    mark_accounting_dirty()?;
 
     Ok(id)
 }
@@ -261,6 +266,7 @@ pub fn add_weeding_record(
             "INSERT INTO finance_records (id, type, category, amount, date, description, linked_entity_type, linked_entity_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
             params![finance_id, "expense", "Crop Inputs", cost, date, format!("Weeding ({})", mode), "weeding_records", id],
         ).ok();
+        mark_accounting_dirty().ok();
     }
 
     Ok(id)
@@ -325,6 +331,7 @@ pub fn delete_weeding_record(state: State<DbState>, id: String) -> Result<(), St
     let conn = state.0.lock().map_err(|e| e.to_string())?;
     conn.execute("DELETE FROM weeding_records WHERE id = ?1", params![id])
         .map_err(|e| e.to_string())?;
+    mark_accounting_dirty().ok();
     Ok(())
 }
 
@@ -344,6 +351,7 @@ pub fn update_weeding_record(
         "UPDATE weeding_records SET crop_id = ?1, mode = ?2, herbicide_name = ?3, date = ?4, cost = ?5, notes = ?6 WHERE id = ?7",
         params![crop_id, mode, herbicide_name, date, cost, notes, id],
     ).map_err(|e| e.to_string())?;
+    mark_accounting_dirty().ok();
     Ok(())
 }
 
@@ -372,6 +380,7 @@ pub fn add_harvest_record(
             "INSERT INTO finance_records (id, type, category, amount, date, description, linked_entity_type, linked_entity_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
             params![finance_id, "expense", "Crop Inputs", cost, harvest_date, "Harvesting costs", "harvest_records", id],
         ).ok();
+        mark_accounting_dirty().ok();
     }
 
     Ok(id)
@@ -436,6 +445,7 @@ pub fn delete_harvest_record(state: State<DbState>, id: String) -> Result<(), St
     let conn = state.0.lock().map_err(|e| e.to_string())?;
     conn.execute("DELETE FROM harvest_records WHERE id = ?1", params![id])
         .map_err(|e| e.to_string())?;
+    mark_accounting_dirty().ok();
     Ok(())
 }
 
@@ -455,6 +465,7 @@ pub fn update_harvest_record(
         "UPDATE harvest_records SET crop_id = ?1, quantity = ?2, unit = ?3, harvest_date = ?4, cost = ?5, notes = ?6 WHERE id = ?7",
         params![crop_id, quantity, unit, harvest_date, cost, notes, id],
     ).map_err(|e| e.to_string())?;
+    mark_accounting_dirty().ok();
     Ok(())
 }
 
@@ -483,6 +494,7 @@ pub fn record_irrigation(
             "INSERT INTO finance_records (id, type, category, amount, date, description, linked_entity_type, linked_entity_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
             params![finance_id, "expense", "Utilities", cost, date, "Irrigation costs", "irrigation_records", id],
         ).map_err(|e| e.to_string())?;
+        mark_accounting_dirty()?;
     }
 
     Ok(id)
@@ -699,6 +711,7 @@ pub fn add_health_record(
             "INSERT INTO finance_records (id, type, category, amount, date, description, linked_entity_type, linked_entity_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
             params![finance_id, "expense", "Livestock Health", cost, record_date, format!("Health: {} for {}", record_type, livestock_id), "health_records", id],
         ).ok();
+        mark_accounting_dirty().ok();
     }
 
     Ok(id)
@@ -880,6 +893,7 @@ pub fn get_finance_summary_logic(
     db: &DbState,
     start_date: String,
 ) -> Result<serde_json::Value, String> {
+    ensure_accounting_backfilled(db)?;
     let conn = db.0.lock().map_err(|e| e.to_string())?;
 
     let mut stmt = conn.prepare("SELECT type, SUM(amount) FROM finance_records WHERE date >= ?1 AND is_deleted = 0 GROUP BY type")
@@ -908,6 +922,7 @@ pub fn get_finance_summary_logic(
 
 #[tauri::command]
 pub fn get_finance_records(state: State<DbState>) -> Result<Vec<FinanceRecord>, String> {
+    ensure_accounting_backfilled(&state)?;
     let conn = state.0.lock().map_err(|e| e.to_string())?;
     let mut stmt = conn.prepare("SELECT id, type, category, amount, date, description, linked_entity_type, linked_entity_id, is_deleted, created_at FROM finance_records WHERE is_deleted = 0 ORDER BY date DESC")
         .map_err(|e| e.to_string())?;
@@ -934,6 +949,938 @@ pub fn get_finance_records(state: State<DbState>) -> Result<Vec<FinanceRecord>, 
         records.push(record.map_err(|e| e.to_string())?);
     }
     Ok(records)
+}
+
+#[tauri::command]
+pub fn get_accounts(state: State<DbState>) -> Result<Vec<Account>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare(
+        "SELECT id, code, name, account_type, parent_account_id, description, created_at FROM accounts ORDER BY code ASC"
+    ).map_err(|e| e.to_string())?;
+
+    let account_iter = stmt
+        .query_map([], |row| {
+            Ok(Account {
+                id: row.get(0)?,
+                code: row.get(1)?,
+                name: row.get(2)?,
+                account_type: row.get(3)?,
+                parent_account_id: row.get(4)?,
+                description: row.get(5)?,
+                created_at: row.get(6)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut accounts = Vec::new();
+    for account in account_iter {
+        accounts.push(account.map_err(|e| e.to_string())?);
+    }
+    Ok(accounts)
+}
+
+#[tauri::command]
+pub fn add_account(
+    state: State<DbState>,
+    code: String,
+    name: String,
+    account_type: String,
+    parent_account_id: Option<String>,
+    description: Option<String>,
+) -> Result<String, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let id = Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT INTO accounts (id, code, name, account_type, parent_account_id, description) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        params![id, code, name, account_type, parent_account_id, description],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(id)
+}
+
+#[tauri::command]
+pub fn update_account(
+    state: State<DbState>,
+    id: String,
+    code: String,
+    name: String,
+    account_type: String,
+    parent_account_id: Option<String>,
+    description: Option<String>,
+) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    if let Some(parent_id) = &parent_account_id {
+        if parent_id == &id {
+            return Err("Parent account cannot be the same account".into());
+        }
+    }
+    conn.execute(
+        "UPDATE accounts SET code = ?1, name = ?2, account_type = ?3, parent_account_id = ?4, description = ?5 WHERE id = ?6",
+        params![code, name, account_type, parent_account_id, description, id],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn delete_account(state: State<DbState>, id: String) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn.prepare("SELECT COUNT(1) FROM accounts WHERE parent_account_id = ?1").map_err(|e| e.to_string())?;
+    let child_count: i64 = stmt.query_row(params![id], |row| row.get(0)).map_err(|e| e.to_string())?;
+    if child_count > 0 {
+        return Err("Cannot delete account with child accounts".into());
+    }
+    conn.execute("DELETE FROM accounts WHERE id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+fn sanitize_account_code(name: &str) -> String {
+    let mut code = name
+        .to_uppercase()
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
+        .collect::<String>();
+    while code.contains("__") {
+        code = code.replace("__", "_");
+    }
+    let target = code.trim_matches('_').to_string();
+    if target.is_empty() {
+        "ACCOUNT".to_string()
+    } else {
+        target
+    }
+}
+
+fn get_or_create_account(
+    conn: &Connection,
+    code: &str,
+    name: &str,
+    account_type: &str,
+    parent_account_id: Option<&str>,
+    description: Option<&str>,
+) -> Result<String, String> {
+    let mut stmt = conn
+        .prepare("SELECT id FROM accounts WHERE code = ?1 OR name = ?2")
+        .map_err(|e| e.to_string())?;
+
+    if let Ok(id) = stmt.query_row(params![code, name], |row| row.get(0)) {
+        return Ok(id);
+    }
+
+    let id = Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT INTO accounts (id, code, name, account_type, parent_account_id, description) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        params![id, code, name, account_type, parent_account_id, description],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(id)
+}
+
+struct FinanceRecordSeed {
+    record_type: &'static str,
+    category: &'static str,
+    amount: f64,
+    date: String,
+    description: String,
+    linked_entity_type: &'static str,
+    linked_entity_id: String,
+}
+
+fn upsert_linked_finance_record(
+    conn: &Connection,
+    seed: FinanceRecordSeed,
+) -> Result<bool, String> {
+    let existing: Option<(String, i32)> = conn
+        .query_row(
+            "SELECT id, is_deleted FROM finance_records WHERE linked_entity_type = ?1 AND linked_entity_id = ?2 LIMIT 1",
+            params![seed.linked_entity_type, seed.linked_entity_id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .optional()
+        .map_err(|e| e.to_string())?;
+
+    if let Some((id, is_deleted)) = existing {
+        if is_deleted != 0 {
+            return Ok(false);
+        }
+
+        conn.execute(
+            "UPDATE finance_records SET type = ?1, category = ?2, amount = ?3, date = ?4, description = ?5 WHERE id = ?6",
+            params![
+                seed.record_type,
+                seed.category,
+                seed.amount,
+                seed.date,
+                seed.description,
+                id
+            ],
+        )
+        .map_err(|e| e.to_string())?;
+        return Ok(false);
+    }
+
+    conn.execute(
+        "INSERT INTO finance_records (id, type, category, amount, date, description, linked_entity_type, linked_entity_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+        params![
+            Uuid::new_v4().to_string(),
+            seed.record_type,
+            seed.category,
+            seed.amount,
+            seed.date,
+            seed.description,
+            seed.linked_entity_type,
+            seed.linked_entity_id
+        ],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(true)
+}
+
+fn backfill_existing_operational_finance_records(conn: &Connection) -> Result<usize, String> {
+    let mut created = 0;
+
+    let seeds = {
+        let mut stmt = conn
+            .prepare(
+                "SELECT id, COALESCE(activity, 'Labor'), date, amount FROM labor_records WHERE COALESCE(amount, 0) > 0",
+            )
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([], |row| {
+                let activity: String = row.get(1)?;
+                Ok(FinanceRecordSeed {
+                    record_type: "expense",
+                    category: "Labor",
+                    amount: row.get(3)?,
+                    date: row.get(2)?,
+                    description: format!("Labor: {}", activity),
+                    linked_entity_type: "labor_records",
+                    linked_entity_id: row.get(0)?,
+                })
+            })
+            .map_err(|e| e.to_string())?;
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(|e| e.to_string())?
+    };
+    for seed in seeds {
+        if upsert_linked_finance_record(conn, seed)? {
+            created += 1;
+        }
+    }
+
+    let seeds = {
+        let mut stmt = conn
+            .prepare("SELECT id, mode, date, cost FROM weeding_records WHERE COALESCE(cost, 0) > 0")
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([], |row| {
+                let mode: String = row.get(1)?;
+                Ok(FinanceRecordSeed {
+                    record_type: "expense",
+                    category: "Crop Inputs",
+                    amount: row.get(3)?,
+                    date: row.get(2)?,
+                    description: format!("Weeding ({})", mode),
+                    linked_entity_type: "weeding_records",
+                    linked_entity_id: row.get(0)?,
+                })
+            })
+            .map_err(|e| e.to_string())?;
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(|e| e.to_string())?
+    };
+    for seed in seeds {
+        if upsert_linked_finance_record(conn, seed)? {
+            created += 1;
+        }
+    }
+
+    let seeds = {
+        let mut stmt = conn
+            .prepare("SELECT id, harvest_date, cost FROM harvest_records WHERE COALESCE(cost, 0) > 0")
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([], |row| {
+                Ok(FinanceRecordSeed {
+                    record_type: "expense",
+                    category: "Crop Inputs",
+                    amount: row.get(2)?,
+                    date: row.get(1)?,
+                    description: "Harvesting costs".to_string(),
+                    linked_entity_type: "harvest_records",
+                    linked_entity_id: row.get(0)?,
+                })
+            })
+            .map_err(|e| e.to_string())?;
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(|e| e.to_string())?
+    };
+    for seed in seeds {
+        if upsert_linked_finance_record(conn, seed)? {
+            created += 1;
+        }
+    }
+
+    let seeds = {
+        let mut stmt = conn
+            .prepare("SELECT id, date, cost FROM irrigation_records WHERE COALESCE(cost, 0) > 0")
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([], |row| {
+                Ok(FinanceRecordSeed {
+                    record_type: "expense",
+                    category: "Utilities",
+                    amount: row.get(2)?,
+                    date: row.get(1)?,
+                    description: "Irrigation costs".to_string(),
+                    linked_entity_type: "irrigation_records",
+                    linked_entity_id: row.get(0)?,
+                })
+            })
+            .map_err(|e| e.to_string())?;
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(|e| e.to_string())?
+    };
+    for seed in seeds {
+        if upsert_linked_finance_record(conn, seed)? {
+            created += 1;
+        }
+    }
+
+    let seeds = {
+        let mut stmt = conn
+            .prepare(
+                "SELECT id, record_type, COALESCE(livestock_id, ''), record_date, cost FROM health_records WHERE COALESCE(cost, 0) > 0",
+            )
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([], |row| {
+                let record_type: String = row.get(1)?;
+                let livestock_id: String = row.get(2)?;
+                Ok(FinanceRecordSeed {
+                    record_type: "expense",
+                    category: "Livestock Health",
+                    amount: row.get(4)?,
+                    date: row.get(3)?,
+                    description: format!("Health: {} for {}", record_type, livestock_id),
+                    linked_entity_type: "health_records",
+                    linked_entity_id: row.get(0)?,
+                })
+            })
+            .map_err(|e| e.to_string())?;
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(|e| e.to_string())?
+    };
+    for seed in seeds {
+        if upsert_linked_finance_record(conn, seed)? {
+            created += 1;
+        }
+    }
+
+    let seeds = {
+        let mut stmt = conn
+            .prepare(
+                "SELECT u.id, COALESCE(i.name, u.input_id), u.date, u.cost FROM crop_input_usage u LEFT JOIN inputs i ON u.input_id = i.id WHERE COALESCE(u.cost, 0) > 0",
+            )
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([], |row| {
+                let input_name: String = row.get(1)?;
+                Ok(FinanceRecordSeed {
+                    record_type: "expense",
+                    category: "Crop Inputs",
+                    amount: row.get(3)?,
+                    date: row.get(2)?,
+                    description: format!("Input Usage: {}", input_name),
+                    linked_entity_type: "crop_input_usage",
+                    linked_entity_id: row.get(0)?,
+                })
+            })
+            .map_err(|e| e.to_string())?;
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(|e| e.to_string())?
+    };
+    for seed in seeds {
+        if upsert_linked_finance_record(conn, seed)? {
+            created += 1;
+        }
+    }
+
+    let seeds = {
+        let mut stmt = conn
+            .prepare(
+                "SELECT id, worker_id, period_start, period_end, total_pay FROM payroll WHERE COALESCE(total_pay, 0) > 0",
+            )
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([], |row| {
+                let worker_id: String = row.get(1)?;
+                let period_start: String = row.get(2)?;
+                let period_end: String = row.get(3)?;
+                Ok(FinanceRecordSeed {
+                    record_type: "expense",
+                    category: "Payroll",
+                    amount: row.get(4)?,
+                    date: period_end.clone(),
+                    description: format!("Payroll for {} ({} - {})", worker_id, period_start, period_end),
+                    linked_entity_type: "payroll",
+                    linked_entity_id: row.get(0)?,
+                })
+            })
+            .map_err(|e| e.to_string())?;
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(|e| e.to_string())?
+    };
+    for seed in seeds {
+        if upsert_linked_finance_record(conn, seed)? {
+            created += 1;
+        }
+    }
+
+    let seeds = {
+        let mut stmt = conn
+            .prepare(
+                "SELECT o.id, o.customer_id, COALESCE(c.name, o.customer_id), o.order_date, o.total_amount FROM orders o LEFT JOIN customers c ON o.customer_id = c.id WHERE COALESCE(o.total_amount, 0) > 0",
+            )
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map([], |row| {
+                let customer_name: String = row.get(2)?;
+                Ok(FinanceRecordSeed {
+                    record_type: "income",
+                    category: "Sales",
+                    amount: row.get(4)?,
+                    date: row.get(3)?,
+                    description: format!("Order from customer: {}", customer_name),
+                    linked_entity_type: "orders",
+                    linked_entity_id: row.get(0)?,
+                })
+            })
+            .map_err(|e| e.to_string())?;
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(|e| e.to_string())?
+    };
+    for seed in seeds {
+        if upsert_linked_finance_record(conn, seed)? {
+            created += 1;
+        }
+    }
+
+    Ok(created)
+}
+
+fn ensure_accounting_backfilled(db: &DbState) -> Result<(), String> {
+    let flag = ACCOUNTING_BACKFILLED.get_or_init(|| Mutex::new(false));
+
+    {
+        let ready = flag.lock().map_err(|e| e.to_string())?;
+        if *ready {
+            return Ok(());
+        }
+    }
+
+    {
+        let conn = db.0.lock().map_err(|e| e.to_string())?;
+        backfill_existing_operational_finance_records(&conn)?;
+    }
+
+    mark_accounting_dirty()?;
+    let mut ready = flag.lock().map_err(|e| e.to_string())?;
+    *ready = true;
+    Ok(())
+}
+
+fn mark_accounting_backfilled() -> Result<(), String> {
+    let flag = ACCOUNTING_BACKFILLED.get_or_init(|| Mutex::new(false));
+    let mut ready = flag.lock().map_err(|e| e.to_string())?;
+    *ready = true;
+    Ok(())
+}
+
+fn mark_accounting_dirty() -> Result<(), String> {
+    let flag = ACCOUNTING_DIRTY.get_or_init(|| Mutex::new(true));
+    let mut dirty = flag.lock().map_err(|e| e.to_string())?;
+    *dirty = true;
+    Ok(())
+}
+
+fn sync_accounting_if_needed(db: &DbState) -> Result<(), String> {
+    ensure_accounting_backfilled(db)?;
+
+    let flag = ACCOUNTING_DIRTY.get_or_init(|| Mutex::new(true));
+    {
+        let dirty = flag.lock().map_err(|e| e.to_string())?;
+        if !*dirty {
+            return Ok(());
+        }
+    }
+
+    sync_finance_records_to_ledger_logic(db)?;
+
+    let mut dirty = flag.lock().map_err(|e| e.to_string())?;
+    *dirty = false;
+    Ok(())
+}
+
+fn sync_finance_records_to_ledger_logic(db: &DbState) -> Result<(), String> {
+    let conn = db.0.lock().map_err(|e| e.to_string())?;
+
+    let cash_account_id = get_or_create_account(
+        &conn,
+        "AST_CASH",
+        "Cash",
+        "Asset",
+        None,
+        Some("Cash account for synced finance records"),
+    )?;
+
+    conn.execute(
+        "DELETE FROM journal_entry_lines WHERE journal_entry_id IN (
+            SELECT id FROM journal_entries
+            WHERE source_finance_record_id IS NOT NULL
+            AND source_finance_record_id NOT IN (SELECT id FROM finance_records WHERE is_deleted = 0)
+        )",
+        [],
+    )
+    .map_err(|e| e.to_string())?;
+    conn.execute(
+        "DELETE FROM journal_entries
+        WHERE source_finance_record_id IS NOT NULL
+        AND source_finance_record_id NOT IN (SELECT id FROM finance_records WHERE is_deleted = 0)",
+        [],
+    )
+    .map_err(|e| e.to_string())?;
+
+    let records = {
+        let mut stmt = conn
+            .prepare("SELECT id, type, category, amount, date, description FROM finance_records WHERE is_deleted = 0")
+            .map_err(|e| e.to_string())?;
+
+        let rows = stmt
+            .query_map([], |row| {
+                Ok(FinanceRecord {
+                    id: row.get(0)?,
+                    record_type: row.get(1)?,
+                    category: row.get(2)?,
+                    amount: row.get(3)?,
+                    date: row.get(4)?,
+                    description: row.get(5)?,
+                    linked_entity_type: None,
+                    linked_entity_id: None,
+                    is_deleted: 0,
+                    created_at: None,
+                })
+            })
+            .map_err(|e| e.to_string())?;
+
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(|e| e.to_string())?
+    };
+
+    for record in records {
+        let existing_entry_id: Option<String> = conn
+            .query_row(
+                "SELECT id FROM journal_entries WHERE source_finance_record_id = ?1",
+                params![record.id],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(|e| e.to_string())?;
+
+        let account_code_prefix = if record.record_type == "income" { "REV" } else { "EXP" };
+        let account_type = if record.record_type == "income" { "Revenue" } else { "Expense" };
+        let account_code = format!("{}_{}", account_code_prefix, sanitize_account_code(&record.category));
+
+        let activity_account_id = get_or_create_account(
+            &conn,
+            &account_code,
+            &record.category,
+            account_type,
+            None,
+            Some("Synced account for finance record"),
+        )?;
+
+        let is_existing_entry = existing_entry_id.is_some();
+        let entry_id = existing_entry_id.unwrap_or_else(|| Uuid::new_v4().to_string());
+        let entry_description = record
+            .description
+            .clone()
+            .filter(|d| !d.trim().is_empty())
+            .unwrap_or_else(|| format!("Synced finance record: {}", record.category));
+        let entry_reference = Some(record.id.clone());
+
+        if is_existing_entry {
+            conn.execute(
+                "UPDATE journal_entries SET date = ?1, description = ?2, reference = ?3 WHERE id = ?4",
+                params![record.date, entry_description, entry_reference, entry_id],
+            )
+            .map_err(|e| e.to_string())?;
+        } else {
+            conn.execute(
+                "INSERT INTO journal_entries (id, date, description, reference, source_finance_record_id) VALUES (?1, ?2, ?3, ?4, ?5)",
+                params![entry_id, record.date, entry_description, entry_reference, record.id],
+            )
+            .map_err(|e| e.to_string())?;
+        }
+
+        conn.execute(
+            "DELETE FROM journal_entry_lines WHERE journal_entry_id = ?1",
+            params![entry_id],
+        )
+        .map_err(|e| e.to_string())?;
+
+        if record.record_type == "income" {
+            conn.execute(
+                "INSERT INTO journal_entry_lines (id, journal_entry_id, account_id, debit, credit, description) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                params![Uuid::new_v4().to_string(), entry_id, cash_account_id, record.amount, 0.0, record.description.clone()],
+            )
+            .map_err(|e| e.to_string())?;
+            conn.execute(
+                "INSERT INTO journal_entry_lines (id, journal_entry_id, account_id, debit, credit, description) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                params![Uuid::new_v4().to_string(), entry_id, activity_account_id, 0.0, record.amount, record.description.clone()],
+            )
+            .map_err(|e| e.to_string())?;
+        } else {
+            conn.execute(
+                "INSERT INTO journal_entry_lines (id, journal_entry_id, account_id, debit, credit, description) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                params![Uuid::new_v4().to_string(), entry_id, activity_account_id, record.amount, 0.0, record.description.clone()],
+            )
+            .map_err(|e| e.to_string())?;
+            conn.execute(
+                "INSERT INTO journal_entry_lines (id, journal_entry_id, account_id, debit, credit, description) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                params![Uuid::new_v4().to_string(), entry_id, cash_account_id, 0.0, record.amount, record.description.clone()],
+            )
+            .map_err(|e| e.to_string())?;
+        }
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn sync_finance_records_to_ledger(state: State<DbState>) -> Result<(), String> {
+    sync_finance_records_to_ledger_logic(&state)
+}
+
+#[tauri::command]
+pub fn populate_accounting_engine(state: State<DbState>) -> Result<usize, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let created = backfill_existing_operational_finance_records(&conn)?;
+    drop(conn);
+    mark_accounting_backfilled()?;
+    sync_accounting_if_needed(&state)?;
+    Ok(created)
+}
+
+/* Journal Entry Commands */
+#[tauri::command]
+pub fn get_journal_entries(state: State<DbState>) -> Result<Vec<JournalEntry>, String> {
+    sync_accounting_if_needed(&state)?;
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare("SELECT id, date, description, reference, source_finance_record_id, created_at FROM journal_entries ORDER BY date DESC, created_at DESC")
+        .map_err(|e| e.to_string())?;
+
+    let iter = stmt
+        .query_map([], |row| {
+            Ok(JournalEntry {
+                id: row.get(0)?,
+                date: row.get(1)?,
+                description: row.get(2)?,
+                reference: row.get(3)?,
+                source_finance_record_id: row.get(4)?,
+                created_at: row.get(5)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut entries = Vec::new();
+    for entry in iter {
+        entries.push(entry.map_err(|e| e.to_string())?);
+    }
+    Ok(entries)
+}
+
+#[tauri::command]
+pub fn get_journal_entry_lines(state: State<DbState>, journal_entry_id: String) -> Result<Vec<JournalEntryLine>, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let mut stmt = conn
+        .prepare("
+            SELECT 
+                jel.id, jel.journal_entry_id, jel.account_id, a.code, a.name, jel.debit, jel.credit, jel.description
+            FROM journal_entry_lines jel
+            JOIN accounts a ON jel.account_id = a.id
+            WHERE jel.journal_entry_id = ?1
+            ORDER BY jel.id ASC
+        ")
+        .map_err(|e| e.to_string())?;
+
+    let iter = stmt
+        .query_map(params![journal_entry_id], |row| {
+            Ok(JournalEntryLine {
+                id: row.get(0)?,
+                journal_entry_id: row.get(1)?,
+                account_id: row.get(2)?,
+                account_code: row.get(3)?,
+                account_name: row.get(4)?,
+                debit: row.get(5)?,
+                credit: row.get(6)?,
+                description: row.get(7)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut lines = Vec::new();
+    for line in iter {
+        lines.push(line.map_err(|e| e.to_string())?);
+    }
+    Ok(lines)
+}
+
+#[tauri::command]
+pub fn add_journal_entry(
+    state: State<DbState>,
+    date: String,
+    description: String,
+    reference: Option<String>,
+    lines: Vec<(String, f64, f64, Option<String>)>, // (account_id, debit, credit, description)
+) -> Result<String, String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    let tx = conn.unchecked_transaction().map_err(|e| e.to_string())?;
+
+    // Validate that debits equal credits
+    let total_debit: f64 = lines.iter().map(|(_, debit, _, _)| debit).sum();
+    let total_credit: f64 = lines.iter().map(|(_, _, credit, _)| credit).sum();
+    
+    if (total_debit - total_credit).abs() > 0.01 {
+        return Err("Debits must equal credits".into());
+    }
+
+    if lines.is_empty() {
+        return Err("Journal entry must have at least one line".into());
+    }
+
+    let entry_id = Uuid::new_v4().to_string();
+    
+    tx.execute(
+        "INSERT INTO journal_entries (id, date, description, reference) VALUES (?1, ?2, ?3, ?4)",
+        params![entry_id, date, description, reference],
+    )
+    .map_err(|e| e.to_string())?;
+
+    for (account_id, debit, credit, line_description) in lines {
+        let line_id = Uuid::new_v4().to_string();
+        tx.execute(
+            "INSERT INTO journal_entry_lines (id, journal_entry_id, account_id, debit, credit, description) 
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![line_id, entry_id, account_id, debit, credit, line_description],
+        )
+        .map_err(|e| e.to_string())?;
+    }
+
+    tx.commit().map_err(|e| e.to_string())?;
+    Ok(entry_id)
+}
+
+#[tauri::command]
+pub fn delete_journal_entry(state: State<DbState>, id: String) -> Result<(), String> {
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    conn.execute("DELETE FROM journal_entries WHERE id = ?1", params![id])
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn get_general_ledger(state: State<DbState>, account_id: Option<String>, start_date: Option<String>, end_date: Option<String>) -> Result<Vec<LedgerEntry>, String> {
+    sync_accounting_if_needed(&state)?;
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    
+    let mut query = "
+        SELECT 
+            a.id, a.code, a.name, a.account_type,
+            jel.debit, jel.credit, je.date, je.description, je.reference
+        FROM journal_entry_lines jel
+        JOIN journal_entries je ON jel.journal_entry_id = je.id
+        JOIN accounts a ON jel.account_id = a.id
+    ".to_string();
+    
+    let mut conditions = Vec::new();
+    let mut params_vec = Vec::new();
+    
+    if let Some(acc_id) = account_id {
+        conditions.push("a.id = ?".to_string());
+        params_vec.push(acc_id);
+    }
+    
+    if let Some(start) = start_date {
+        conditions.push("je.date >= ?".to_string());
+        params_vec.push(start);
+    }
+    
+    if let Some(end) = end_date {
+        conditions.push("je.date <= ?".to_string());
+        params_vec.push(end);
+    }
+    
+    if !conditions.is_empty() {
+        query.push_str(&format!(" WHERE {}", conditions.join(" AND ")));
+    }
+    
+    query.push_str(" ORDER BY je.date ASC, je.created_at ASC");
+    
+    let mut stmt = conn.prepare(&query).map_err(|e| e.to_string())?;
+    
+    let params: Vec<&dyn rusqlite::ToSql> = params_vec.iter().map(|s| s as &dyn rusqlite::ToSql).collect();
+    
+    let iter = stmt
+        .query_map(&params[..], |row| {
+            Ok(LedgerEntry {
+                account_id: row.get(0)?,
+                account_code: row.get(1)?,
+                account_name: row.get(2)?,
+                account_type: row.get(3)?,
+                debit: row.get(4)?,
+                credit: row.get(5)?,
+                balance: 0.0, // Will be calculated below
+                date: row.get(6)?,
+                description: row.get(7)?,
+                reference: row.get(8)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut entries = Vec::new();
+    let mut running_balances: std::collections::HashMap<String, f64> = std::collections::HashMap::new();
+    
+    for entry in iter {
+        let mut entry = entry.map_err(|e| e.to_string())?;
+        let running_balance = running_balances
+            .entry(entry.account_id.clone())
+            .or_insert(0.0);
+        // Calculate running balance based on account type
+        match entry.account_type.as_str() {
+            "Asset" | "Expense" => {
+                *running_balance += entry.debit - entry.credit;
+            }
+            "Liability" | "Equity" | "Revenue" => {
+                *running_balance += entry.credit - entry.debit;
+            }
+            _ => {}
+        }
+        entry.balance = *running_balance;
+        entries.push(entry);
+    }
+    
+    Ok(entries)
+}
+
+#[tauri::command]
+pub fn get_balance_sheet_from_ledger(state: State<DbState>) -> Result<Vec<BalanceSheetEntry>, String> {
+    sync_accounting_if_needed(&state)?;
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    
+    let mut stmt = conn
+        .prepare("
+            SELECT 
+                a.name as account_name,
+                CASE 
+                    WHEN a.account_type IN ('Asset', 'Expense') THEN 
+                        COALESCE(SUM(jel.debit - jel.credit), 0)
+                    WHEN a.account_type IN ('Liability', 'Equity', 'Revenue') THEN 
+                        COALESCE(SUM(jel.credit - jel.debit), 0)
+                    ELSE 0
+                END as amount,
+                MAX(je.date) as last_date
+            FROM accounts a
+            LEFT JOIN journal_entry_lines jel ON a.id = jel.account_id
+            LEFT JOIN journal_entries je ON jel.journal_entry_id = je.id
+            WHERE a.account_type IN ('Asset', 'Liability', 'Equity')
+            GROUP BY a.id, a.name, a.account_type
+            HAVING amount != 0
+            ORDER BY a.code ASC
+        ")
+        .map_err(|e| e.to_string())?;
+
+    let iter = stmt
+        .query_map([], |row| {
+            Ok(BalanceSheetEntry {
+                account_name: row.get(0)?,
+                amount: row.get(1)?,
+                updated_at: row.get(2)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut entries = Vec::new();
+    for entry in iter {
+        entries.push(entry.map_err(|e| e.to_string())?);
+    }
+    Ok(entries)
+}
+
+#[tauri::command]
+pub fn get_profit_loss_from_ledger(state: State<DbState>, start_date: Option<String>, end_date: Option<String>) -> Result<(f64, f64, f64), String> {
+    sync_accounting_if_needed(&state)?;
+    let conn = state.0.lock().map_err(|e| e.to_string())?;
+    
+    let mut query = "
+        SELECT 
+            a.account_type,
+            CASE 
+                WHEN a.account_type = 'Revenue' THEN COALESCE(SUM(jel.credit - jel.debit), 0)
+                WHEN a.account_type = 'Expense' THEN COALESCE(SUM(jel.debit - jel.credit), 0)
+                ELSE 0
+            END as amount
+        FROM accounts a
+        LEFT JOIN journal_entry_lines jel ON a.id = jel.account_id
+        LEFT JOIN journal_entries je ON jel.journal_entry_id = je.id
+        WHERE a.account_type IN ('Revenue', 'Expense')
+    ".to_string();
+    
+    let mut conditions = Vec::new();
+    let mut params_vec = Vec::new();
+    
+    if let Some(start) = start_date {
+        conditions.push("je.date >= ?".to_string());
+        params_vec.push(start);
+    }
+    
+    if let Some(end) = end_date {
+        conditions.push("je.date <= ?".to_string());
+        params_vec.push(end);
+    }
+    
+    if !conditions.is_empty() {
+        query.push_str(&format!(" AND {}", conditions.join(" AND ")));
+    }
+    
+    query.push_str(" GROUP BY a.id, a.account_type");
+    
+    let mut stmt = conn.prepare(&query).map_err(|e| e.to_string())?;
+    
+    let params: Vec<&dyn rusqlite::ToSql> = params_vec.iter().map(|s| s as &dyn rusqlite::ToSql).collect();
+    
+    let iter = stmt
+        .query_map(&params[..], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, f64>(1)?))
+        })
+        .map_err(|e| e.to_string())?;
+
+    let mut total_revenue = 0.0;
+    let mut total_expenses = 0.0;
+    
+    for row in iter {
+        let (account_type, amount) = row.map_err(|e| e.to_string())?;
+        if account_type == "Revenue" {
+            total_revenue += amount;
+        } else if account_type == "Expense" {
+            total_expenses += amount;
+        }
+    }
+    
+    let net_profit = total_revenue - total_expenses;
+    Ok((total_revenue, total_expenses, net_profit))
 }
 
 #[tauri::command]
@@ -975,6 +1922,7 @@ pub fn add_finance_record_logic(
         "INSERT INTO finance_records (id, type, category, amount, date, description, linked_entity_type, linked_entity_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
         params![id, record_type, category, amount, date, description, linked_entity_type, linked_entity_id],
     ).map_err(|e| e.to_string())?;
+    mark_accounting_dirty()?;
     Ok(id)
 }
 
@@ -1147,14 +2095,44 @@ pub fn delete_irrigation_record(state: State<DbState>, id: String) -> Result<(),
     conn.execute("DELETE FROM finance_records WHERE linked_entity_type = 'irrigation_records' AND linked_entity_id = ?1", params![id]).ok();
     conn.execute("DELETE FROM irrigation_records WHERE id = ?1", params![id])
         .map_err(|e| e.to_string())?;
+    mark_accounting_dirty().ok();
     Ok(())
 }
 
 #[tauri::command]
 pub fn delete_finance_record(state: State<DbState>, id: String) -> Result<(), String> {
     let conn = state.0.lock().map_err(|e| e.to_string())?;
-    conn.execute("DELETE FROM finance_records WHERE id = ?1", params![id])
+    let linked_source: Option<(Option<String>, Option<String>)> = conn
+        .query_row(
+            "SELECT linked_entity_type, linked_entity_id FROM finance_records WHERE id = ?1",
+            params![id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .optional()
         .map_err(|e| e.to_string())?;
+
+    conn.execute(
+        "DELETE FROM journal_entry_lines WHERE journal_entry_id IN (SELECT id FROM journal_entries WHERE source_finance_record_id = ?1)",
+        params![id],
+    )
+    .ok();
+    conn.execute(
+        "DELETE FROM journal_entries WHERE source_finance_record_id = ?1",
+        params![id],
+    )
+    .ok();
+
+    match linked_source {
+        Some((Some(_), Some(_))) => {
+            conn.execute("UPDATE finance_records SET is_deleted = 1 WHERE id = ?1", params![id])
+                .map_err(|e| e.to_string())?;
+        }
+        _ => {
+        conn.execute("DELETE FROM finance_records WHERE id = ?1", params![id])
+                .map_err(|e| e.to_string())?;
+        }
+    }
+    mark_accounting_dirty()?;
     Ok(())
 }
 
@@ -1175,6 +2153,7 @@ pub fn update_finance_record(
         "UPDATE finance_records SET type = ?1, category = ?2, amount = ?3, date = ?4, description = ?5, linked_entity_type = ?6, linked_entity_id = ?7 WHERE id = ?8",
         params![record_type, category, amount, date, description, linked_entity_type, linked_entity_id, id],
     ).map_err(|e| e.to_string())?;
+    mark_accounting_dirty()?;
     Ok(())
 }
 
@@ -1497,6 +2476,7 @@ pub fn record_input_usage(
             "INSERT INTO finance_records (id, type, category, amount, date, description, linked_entity_type, linked_entity_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
             params![finance_id, "expense", "Crop Inputs", cost, date, format!("Input Usage: {}", input_id), "crop_input_usage", id],
         ).ok();
+        mark_accounting_dirty().ok();
     }
 
     Ok(id)
@@ -1613,6 +2593,7 @@ pub fn delete_input_usage(state: State<DbState>, id: String) -> Result<(), Strin
     // Delete usage record
     conn.execute("DELETE FROM crop_input_usage WHERE id = ?1", params![id])
         .map_err(|e| e.to_string())?;
+    mark_accounting_dirty()?;
 
     Ok(())
 }
@@ -1657,6 +2638,7 @@ pub fn update_input_usage(
         params![quantity, cost, notes, id],
     )
     .map_err(|e| e.to_string())?;
+    mark_accounting_dirty()?;
 
     Ok(())
 }
@@ -1925,6 +2907,7 @@ pub fn generate_payroll(
         "INSERT INTO finance_records (id, type, category, amount, date, description, linked_entity_type, linked_entity_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
         params![finance_id, "expense", "Payroll", total_pay, period_end, format!("Payroll for {} ({} - {})", worker_id, period_start, period_end), "payroll", id],
     ).ok();
+    mark_accounting_dirty().ok();
 
     Ok(id)
 }
@@ -1969,6 +2952,7 @@ pub fn update_payroll(
         "UPDATE finance_records SET amount = ?1, date = ?2, description = ?3 WHERE linked_entity_type = 'payroll' AND linked_entity_id = ?4",
         params![total_pay, period_end, format!("Payroll for {} ({} - {})", worker_id, period_start, period_end), id],
     ).ok();
+    mark_accounting_dirty().ok();
 
     Ok(())
 }
@@ -1987,6 +2971,7 @@ pub fn delete_payroll(state: State<DbState>, id: String) -> Result<(), String> {
     // Delete payroll
     conn.execute("DELETE FROM payroll WHERE id = ?1", params![id])
         .map_err(|e| e.to_string())?;
+    mark_accounting_dirty().ok();
 
     Ok(())
 }
@@ -2204,6 +3189,7 @@ pub fn add_order(
         "INSERT INTO finance_records (id, type, category, amount, date, description, linked_entity_type, linked_entity_id) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
         params![finance_id, "income", "Sales", total_amount, order_date, format!("Order from customer: {}", customer_id), "orders", id],
     ).ok();
+    mark_accounting_dirty().ok();
 
     Ok(id)
 }
@@ -2230,6 +3216,7 @@ pub fn update_order(
         "UPDATE finance_records SET amount = ?1, date = ?2, description = ?3 WHERE linked_entity_type = 'orders' AND linked_entity_id = ?4",
         params![total_amount, order_date, format!("Order from customer: {}", customer_id), id],
     ).ok();
+    mark_accounting_dirty().ok();
 
     Ok(())
 }
@@ -2246,6 +3233,7 @@ pub fn delete_order(state: State<DbState>, id: String) -> Result<(), String> {
     // Delete order
     conn.execute("DELETE FROM orders WHERE id = ?1", params![id])
         .map_err(|e| e.to_string())?;
+    mark_accounting_dirty().ok();
     Ok(())
 }
 

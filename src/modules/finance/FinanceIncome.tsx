@@ -97,7 +97,7 @@ const FinanceIncome: React.FC = () => {
                     </div>
                     <div className="input-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                         <div className="input-group">
-                            <label>Amount (Kshs)</label>
+                            <label>Amount (KES)</label>
                             <input type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" required />
                         </div>
                         <div className="input-group">
@@ -140,7 +140,7 @@ const FinanceIncome: React.FC = () => {
                                     <td>{new Date(tx.date).toLocaleDateString()}</td>
                                     <td style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{tx.category}</td>
                                     <td style={{ color: 'var(--text-secondary)' }}>{tx.description || '-'}</td>
-                                    <td style={{ fontWeight: 700, color: 'var(--accent-primary)' }}>+Kshs {tx.amount.toFixed(2)}</td>
+                                    <td style={{ fontWeight: 700, color: 'var(--accent-primary)' }}>+KES {tx.amount.toFixed(2)}</td>
                                     <td>
                                         <button className="btn-icon danger" onClick={() => handleDelete(tx.id)}><Trash2 size={14} /></button>
                                     </td>

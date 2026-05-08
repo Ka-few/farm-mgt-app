@@ -142,11 +142,11 @@ const Budgets: React.FC = () => {
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                 <div>
                                     <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.6 }}>Allocated</p>
-                                    <p style={{ margin: 0, fontWeight: 700 }}>Kshs {budget.total_amount.toLocaleString()}</p>
+                                    <p style={{ margin: 0, fontWeight: 700 }}>KES {budget.total_amount.toLocaleString()}</p>
                                 </div>
                                 <div style={{ textAlign: 'right' }}>
                                     <p style={{ margin: 0, fontSize: '0.75rem', opacity: 0.6 }}>Actual Spent</p>
-                                    <p style={{ margin: 0, fontWeight: 700, color: budget.spent_amount > budget.total_amount ? 'var(--error-text)' : 'inherit' }}>Kshs {budget.spent_amount.toLocaleString()}</p>
+                                    <p style={{ margin: 0, fontWeight: 700, color: budget.spent_amount > budget.total_amount ? 'var(--error-text)' : 'inherit' }}>KES {budget.spent_amount.toLocaleString()}</p>
                                 </div>
                             </div>
                         </div>
@@ -164,8 +164,8 @@ const Budgets: React.FC = () => {
                                         <span style={{ fontSize: '0.8rem', opacity: 0.6 }}>{Math.round((item.spent_amount / item.allocated_amount) * 100)}% Used</span>
                                     </div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <span style={{ fontSize: '0.9rem' }}>Budgeted: <b>Kshs {item.allocated_amount.toLocaleString()}</b></span>
-                                        <span style={{ fontSize: '0.9rem', color: 'var(--accent-secondary)' }}>Spent: Kshs {item.spent_amount.toLocaleString()}</span>
+                                        <span style={{ fontSize: '0.9rem' }}>Budgeted: <b>KES {item.allocated_amount.toLocaleString()}</b></span>
+                                        <span style={{ fontSize: '0.9rem', color: 'var(--accent-secondary)' }}>Spent: KES {item.spent_amount.toLocaleString()}</span>
                                     </div>
                                 </div>
                             ))}

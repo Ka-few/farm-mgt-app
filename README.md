@@ -1,6 +1,6 @@
 # ShambaSmart FARM Management Application
 
-A modern, desktop-native farm management tool built with **Tauri**, **React**, **TypeScript**, and **SQLite**. Featuring a premium "Agricultural-Fintech" design and an integrated **Offline AI Assistant**, it enables farmers to organize, track, and generate metrics natively across Linux, Windows, and macOS.
+A modern, desktop-native farm management tool built with **Tauri**, **React**, **TypeScript**, and **SQLite**. Featuring a premium "Agricultural-Fintech" design, integrated **Offline AI Assistant**, and a complete end-to-end accounting dashboard, it enables farmers to organize, track, and generate metrics natively across Linux, Windows, and macOS.
 
 ## ✨ Premium UI & UX
 * **Premium Farm Theme**: A sophisticated, high-contrast light theme featuring deep forest greens and gold accents, designed for clarity and a professional feel.
@@ -16,9 +16,10 @@ A modern, desktop-native farm management tool built with **Tauri**, **React**, *
 ## 🛠️ Tech Stack
 * **Frontend**: React + TypeScript + Vanilla CSS, Recharts (Visualizations)
 * **Backend**: Rust + Tauri Command Handlers
-* **Database**: SQLite (via `@tauri-apps/plugin-sql`)
+* **Database**: SQLite (via `@tauri-apps/plugin-sql`) with professional accounting schema
 * **Exporting**: jsPDF & jsPDF-AutoTable
 * **AI Engine**: Ollama (Offline LLM integration)
+* **Accounting Engine**: Double-entry bookkeeping with COA, journal entries, and general ledger
 
 ## Core Features
 
@@ -30,7 +31,7 @@ A modern, desktop-native farm management tool built with **Tauri**, **React**, *
 ### 📊 Intelligence & Reporting
 * **Interactive Visualizations**: Integrated **Recharts** for dynamic and type-safe data analytics.
 * **PDF Exports**: Professional offline report generation across all tabs using **jsPDF**.
-* **Financial Reports**: Complete breakdown of income vs. expenses synchronized with daily operational costs.
+* **Financial Reports**: Complete breakdown of income vs. expenses synchronized with daily operational costs and integrated with the professional accounting ledger.
 * **Production Metrics**: Yield tracking for milk, eggs, and meat with aggregated timeline views.
 * **Health Insights**: Comprehensive veterinary history and medical expense tracking.
 * **Resource Reports**: Real-time workforce distribution and crop life-cycle metrics.
@@ -48,8 +49,13 @@ A modern, desktop-native farm management tool built with **Tauri**, **React**, *
 * Define roles, manage active status, track daily tasks, and seamlessly edit or delete records.
 * Automated financial integration for wage-based expenditure tracking.
 
-### 🤝 CRM (Customer Management)
-* Manage customer profiles, interaction logs, and buyer/vendor relationships natively.
+### 💰 Professional Accounting Engine
+* **Chart of Accounts (COA)**: Complete account master with hierarchical structure, account types (Asset, Liability, Equity, Revenue, Expense), and full CRUD operations.
+* **Double-Entry Journal Entries**: Professional transaction recording with debit/credit validation, multi-line entries, and account linking.
+* **General Ledger**: Comprehensive transaction history with running balances, account-specific filtering, and date range queries.
+* **Balance Sheet**: Automatically calculated from ledger transactions with real-time balance validation and export capabilities.
+* **Profit & Loss Integration**: Revenue and expense tracking through the COA structure for accurate financial reporting, with a dedicated P&L statement dashboard.
+* **Audit Trail**: Complete transaction history with references and timestamps for financial accountability.
 
 ## Development & Setup
 Ensure you have the Rust toolchain, Node.js, and **Ollama** installed.

@@ -111,7 +111,7 @@ const ProductionStatement: React.FC = () => {
             marginTop: isSubtotal ? '0.5rem' : '0'
         }}>
             <span style={{ paddingLeft: isSubtotal ? '0' : '1rem' }}>{label}</span>
-            <span>Kshs {value.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+            <span>KES {value.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
         </div>
     );
 

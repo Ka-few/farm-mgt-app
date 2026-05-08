@@ -100,6 +100,17 @@ pub struct FinanceRecord {
     pub created_at: Option<String>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Account {
+    pub id: String,
+    pub code: String,
+    pub name: String,
+    pub account_type: String,
+    pub parent_account_id: Option<String>,
+    pub description: Option<String>,
+    pub created_at: Option<String>,
+}
+
 #[allow(dead_code)]
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AuditEvent {
@@ -300,4 +311,41 @@ pub struct BalanceSheetEntry {
     pub account_name: String,
     pub amount: f64,
     pub updated_at: Option<String>,
+}
+
+/* Journal Entries */
+#[derive(Debug, Serialize, Deserialize)]
+pub struct JournalEntry {
+    pub id: String,
+    pub date: String,
+    pub description: String,
+    pub reference: Option<String>,
+    pub source_finance_record_id: Option<String>,
+    pub created_at: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct JournalEntryLine {
+    pub id: String,
+    pub journal_entry_id: String,
+    pub account_id: String,
+    pub account_code: Option<String>,
+    pub account_name: Option<String>,
+    pub debit: f64,
+    pub credit: f64,
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LedgerEntry {
+    pub account_id: String,
+    pub account_code: String,
+    pub account_name: String,
+    pub account_type: String,
+    pub debit: f64,
+    pub credit: f64,
+    pub balance: f64,
+    pub date: String,
+    pub description: String,
+    pub reference: Option<String>,
 }

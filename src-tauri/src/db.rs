@@ -119,6 +119,38 @@ pub fn establish_connection(app: &AppHandle) -> Connection {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
 
+        CREATE TABLE IF NOT EXISTS accounts (
+            id TEXT PRIMARY KEY,
+            code TEXT UNIQUE NOT NULL,
+            name TEXT UNIQUE NOT NULL,
+            account_type TEXT CHECK(account_type IN ('Asset', 'Liability', 'Equity', 'Revenue', 'Expense')) NOT NULL,
+            parent_account_id TEXT,
+            description TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(parent_account_id) REFERENCES accounts(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS journal_entries (
+            id TEXT PRIMARY KEY,
+            date DATE NOT NULL,
+            description TEXT NOT NULL,
+            reference TEXT,
+            source_finance_record_id TEXT UNIQUE,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS journal_entry_lines (
+            id TEXT PRIMARY KEY,
+            journal_entry_id TEXT NOT NULL,
+            account_id TEXT NOT NULL,
+            debit REAL NOT NULL DEFAULT 0.0,
+            credit REAL NOT NULL DEFAULT 0.0,
+            description TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(journal_entry_id) REFERENCES journal_entries(id) ON DELETE CASCADE,
+            FOREIGN KEY(account_id) REFERENCES accounts(id)
+        );
+
         CREATE TABLE IF NOT EXISTS crops (
             id TEXT PRIMARY KEY,
             plot_id TEXT,
@@ -375,6 +407,9 @@ pub fn establish_connection(app: &AppHandle) -> Connection {
     // Crops migrations
     let _ = conn.execute("ALTER TABLE crops ADD COLUMN planted_area REAL", []);
     let _ = conn.execute("ALTER TABLE crops ADD COLUMN unit TEXT", []);
+
+    let _ = conn.execute("ALTER TABLE journal_entries ADD COLUMN source_finance_record_id TEXT", []);
+    let _ = conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_journal_entries_source_finance_record_id ON journal_entries(source_finance_record_id)", []);
 
     // Add default planting areas to prevent foreign key errors and provide generic options
     let _ = conn.execute(
